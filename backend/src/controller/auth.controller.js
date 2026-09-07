@@ -36,10 +36,7 @@ const signinController = async (req, res) => {
       error: "wrong credentials",
     });
   }
-  // Prefer model method, fall back to bcrypt directly
-  const isMatch = isUserExists.comparePassword
-    ? await isUserExists.comparePassword(password)
-    : await bcrypt.compare(password, isUserExists.password);
+  const isMatch = await bcrypt.compare(password, isUserExists.password)
   if (!isMatch) {
     return res.status(401).json({
       success: false,
@@ -48,7 +45,7 @@ const signinController = async (req, res) => {
   }
   const token = issueToken(isUserExists);
   setTokenCookie(res, token);
-  res.status(200).json({ token, success: true });
+  res.status(200).json({ token, success: true ,user:isUserExists });
 };
 
 const signupController = async (req, res) => {
@@ -72,25 +69,15 @@ const signupController = async (req, res) => {
   res.status(201).json({
     success: true,
     token,
+    user,
   });
 };
-const googleCallback= async ( req,res)=>{
+const googleCallback = async (req, res) => {
 
   console.log(req.email)
   res.redirect('http://localhost:5173/')
 
 }
-/**
- * Passport verify callback for GoogleStrategy.
- * Reference for `oAuth.service.js`:
- *   passport.use(new GoogleStrategy({ clientID, clientSecret, callbackURL },
- *     authController.googleVerifyCallback))
- *
- * Steps: 1) already linked via googleId -> return it
- *        2) same email exists (local signup) -> link googleId + avatar
- *        3) new user -> create OAuth user (dummy contact/password satisfy
- *           current required schema until model adds googleId/avatar/provider)
- */
 const googleVerifyCallback = async (
   accessToken,
   refreshToken,
@@ -103,16 +90,12 @@ const googleVerifyCallback = async (
       return done(new Error("Google profile has no email"), null);
     }
 
-    // 1) Already linked via Google before
     let user = await userData.findOne({ googleId: profile.id });
     if (user) return done(null, user);
 
-    // 2) Same email signed up locally before -> link accounts
     user = await userData.findOne({ email });
     if (user) {
       user.googleId = profile.id;
-      // These fields are stripped by current strict schema until you add
-      // them to user.model.js, but harmless to set now (forward-compatible)
       user.avatar = profile?.photos?.[0]?.value;
       user.provider = "google";
       await user.save({ validateBeforeSave: false });
@@ -127,9 +110,6 @@ const googleVerifyCallback = async (
       avatar: profile?.photos?.[0]?.value,
       provider: "google",
       role: "buyer",
-      // Placeholders to satisfy current `required: true` schema.
-      // Remove once password/contact become conditional in the model.
-      contact: "0000000000",
       password: crypto.randomBytes(32).toString("hex"),
     });
     return done(null, user);
@@ -138,11 +118,6 @@ const googleVerifyCallback = async (
   }
 };
 
-/**
- * Runs after `passport.authenticate('google', { session: false })`.
- * Expects `req.user` to be set from googleVerifyCallback above.
- * Issues your JWT, sets httpOnly cookie, redirects to Vite frontend.
- */
 const googleCallbackController = async (req, res) => {
   const user = req.user;
   if (!user) {
@@ -150,8 +125,6 @@ const googleCallbackController = async (req, res) => {
   }
   const token = issueToken(user);
   setTokenCookie(res, token);
-  // Cookie is httpOnly (frontend can't read it), so also pass token in query
-  // for memory storage. Frontend route: /auth/success?token=...
   return res.redirect(`${config.CLIENT_URL}/auth/success?token=${token}`);
 };
 
