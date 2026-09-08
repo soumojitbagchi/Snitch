@@ -30,13 +30,13 @@ const setTokenCookie = (res, token) => {
 const signinController = async (req, res) => {
   const { email, password } = req.body;
   const isUserExists = await userData.findOne({ email });
-  if (!isUserExists || !isUserExists.password) {
+  if (!isUserExists) {
     return res.status(401).json({
       success: false,
       error: "wrong credentials",
     });
   }
-  const isMatch = await bcrypt.compare(password, isUserExists.password)
+  const isMatch = bcrypt.compare(password, isUserExists.password)
   if (!isMatch) {
     return res.status(401).json({
       success: false,
@@ -51,6 +51,7 @@ const signinController = async (req, res) => {
 const signupController = async (req, res) => {
   const { email, password, fullname, contact, role } = req.body;
   const isUserExists = await userData.findOne({ email });
+  const hash = await bcrypt.hash(password,10)
   if (isUserExists) {
     return res.status(409).json({
       success: false,
@@ -59,7 +60,7 @@ const signupController = async (req, res) => {
   }
   const user = await userData.create({
     email,
-    password,
+    password:hash,
     contact,
     role,
     fullname,
@@ -102,7 +103,6 @@ const googleVerifyCallback = async (
       return done(null, user);
     }
 
-    // 3) Brand new Google user
     user = await userData.create({
       googleId: profile.id,
       email,
