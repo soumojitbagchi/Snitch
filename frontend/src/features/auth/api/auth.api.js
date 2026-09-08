@@ -14,8 +14,3 @@ export const signup = async ({ email, password, fullname, contact, role}) => {
   const response = await api.post("/signup", { email, password ,fullname,contact,role});
   return response.data;
 };
-
-export const Oauth= async ()=>{
-    const response = await api.get('/google/callback')
-    return response.data
-}

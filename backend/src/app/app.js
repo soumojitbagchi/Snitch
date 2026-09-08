@@ -22,7 +22,7 @@ app.use(passport.initialize())
 passport.use(new GoogleStrategy({
   clientID: config.GOOGLE_AUTH_CLIENT_ID,
   clientSecret: config.GOOGLE_AUTH_SECRET_KEY,
-  callbackURL: "/api/auth/google/callback"
+  callbackURL: `${config.CLIENT_URL}/api/auth/google/callback`
 }, authController.googleVerifyCallback))
 
 app.use(cookie())

@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import Field from "./Field";
 import { inputClass } from "./inputClass";
 import { useAuth } from "../hooks/useAuth";
-import { useNavigate } from "react-router";
 
 export default function Signin({ onSwitch }) {
   const {
@@ -23,7 +22,6 @@ export default function Signin({ onSwitch }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const navigate = useNavigate()
 
   const onSubmit = async (e) => {
     e.preventDefault();

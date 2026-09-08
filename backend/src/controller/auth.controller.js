@@ -125,7 +125,7 @@ const googleCallbackController = async (req, res) => {
   }
   const token = issueToken(user);
   setTokenCookie(res, token);
-  return res.redirect(`${config.CLIENT_URL}/auth/success?token=${token}`);
+  return res.redirect(`${config.CLIENT_URL}/`); //redirect link 
 };
 
 export { signinController, signupController, googleVerifyCallback, googleCallbackController };

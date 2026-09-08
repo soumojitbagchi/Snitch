@@ -5,7 +5,7 @@ import Signup from "./features/auth/UI/Signup";
 
 const AppRoute= ()=>{
     <Routes>
-        <Route path="/" element={<h1> welcome to home page </h1>}/>
+        <Route path="/" element={}/>
         <Route path="/signin" element={<Signin/>} />
         <Route path="/singup" element={<Signup/>} />
     </Routes>

@@ -74,6 +74,7 @@ export const useAuth = (mode = "signin") => {
       dispatch(fail(typeof msg === "string" ? msg : "Something went wrong."));
       return { ok: false };
     }
+
   };
 
   return {
