@@ -1,83 +1,30 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import Field from "./Field";
 import { inputClass } from "./inputClass";
-
-const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-const isContact = (v) => /^\d{10}$/.test(v.trim());
+import { useAuth } from "../hooks/useAuth";
 
 export default function Signup({ onSwitch }) {
-  const [values, setValues] = useState({
-    fullname: "",
-    email: "",
-    contact: "",
-    password: "",
-    role: "buyer",
-  });
-  const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const {
+    values,
+    errors,
+    serverError,
+    showPassword,
+    loading,
+    done,
+    set,
+    setRole,
+    toggleShowPassword,
+    submit,
+    reset,
+  } = useAuth("signup");
 
-  const set = (k) => (e) => {
-    const v = e.target.value;
-    setValues((prev) => ({
-      ...prev,
-      [k]: k === "contact" ? v.replace(/\D/g, "").slice(0, 10) : v,
-    }));
-    setErrors((er) => ({ ...er, [k]: "" }));
-    setServerError("");
-  };
-
-  const validate = () => {
-    const er = {};
-    if (!values.fullname.trim()) er.fullname = "Full name is required.";
-    if (!values.email.trim()) er.email = "Email is required.";
-    else if (!isEmail(values.email)) er.email = "Enter a valid email.";
-    if (!values.contact.trim()) er.contact = "Contact number is required.";
-    else if (!isContact(values.contact))
-      er.contact = "Contact needs to be 10 digits.";
-    if (!values.password) er.password = "Password is required.";
-    else if (values.password.length < 6)
-      er.password = "Password needs to be at least 6 characters.";
-    setErrors(er);
-    return Object.keys(er).length === 0;
-  };
+  useEffect(() => {
+    reset("signup");
+  }, []);
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setServerError("");
-    setDone(false);
-    if (!validate()) return;
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          fullname: values.fullname.trim(),
-          email: values.email.trim().toLowerCase(),
-          contact: values.contact.trim(),
-          password: values.password,
-          role: values.role,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.success === false) {
-        const msg =
-          data?.error ||
-          (Array.isArray(data?.error) && data.error[0]?.msg) ||
-          "Could not create your account. Try again.";
-        setServerError(typeof msg === "string" ? msg : "Sign up failed.");
-        return;
-      }
-      setDone(true);
-    } catch {
-      setServerError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    await submit();
   };
 
   return (
@@ -88,7 +35,7 @@ export default function Signup({ onSwitch }) {
           type="text"
           autoComplete="name"
           placeholder="Aarav Sharma"
-          value={values.fullname}
+          value={values.fullname ?? ""}
           onChange={set("fullname")}
           className={inputClass(errors.fullname)}
         />
@@ -100,7 +47,7 @@ export default function Signup({ onSwitch }) {
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
-          value={values.email}
+          value={values.email ?? ""}
           onChange={set("email")}
           className={inputClass(errors.email)}
         />
@@ -123,7 +70,7 @@ export default function Signup({ onSwitch }) {
               inputMode="numeric"
               autoComplete="tel"
               placeholder="98765 43210"
-              value={values.contact}
+              value={values.contact ?? ""}
               onChange={set("contact")}
               className={inputClass(errors.contact)}
             />
@@ -142,13 +89,13 @@ export default function Signup({ onSwitch }) {
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               placeholder="••••••••"
-              value={values.password}
+              value={values.password ?? ""}
               onChange={set("password")}
               className={`${inputClass(errors.password)} pr-16`}
             />
             <button
               type="button"
-              onClick={() => setShowPassword((s) => !s)}
+              onClick={toggleShowPassword}
               className="absolute inset-y-0 right-0 px-3 text-xs font-medium uppercase tracking-wider text-neutral-500 hover:text-black"
             >
               {showPassword ? "Hide" : "Show"}
@@ -177,7 +124,7 @@ export default function Signup({ onSwitch }) {
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => setValues((v) => ({ ...v, role: opt.value }))}
+                onClick={() => setRole(opt.value)}
                 className={`px-4 py-2.5 text-left transition-colors ${
                   active ? "bg-black text-white" : "bg-white hover:bg-neutral-50"
                 } ${opt.value === "buyer" ? "border-r border-neutral-300" : ""}`}

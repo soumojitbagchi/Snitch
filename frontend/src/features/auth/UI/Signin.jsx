@@ -1,65 +1,35 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import Field from "./Field";
 import { inputClass } from "./inputClass";
-
-const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+import { useAuth } from "../hooks/useAuth";
+import { useNavigate } from "react-router";
 
 export default function Signin({ onSwitch }) {
-  const [values, setValues] = useState({ email: "", password: "" });
-  const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const {
+    values,
+    errors,
+    serverError,
+    showPassword,
+    loading,
+    done,
+    set,
+    toggleShowPassword,
+    submit,
+    reset,
+  } = useAuth("signin");
 
-  const set = (k) => (e) => {
-    setValues((v) => ({ ...v, [k]: e.target.value }));
-    setErrors((er) => ({ ...er, [k]: "" }));
-    setServerError("");
-  };
+  useEffect(() => {
+    reset("signin");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const validate = () => {
-    const er = {};
-    if (!values.email.trim()) er.email = "Email is required.";
-    else if (!isEmail(values.email)) er.email = "Enter a valid email.";
-    if (!values.password) er.password = "Password is required.";
-    else if (values.password.length < 6)
-      er.password = "Password needs to be at least 6 characters.";
-    setErrors(er);
-    return Object.keys(er).length === 0;
-  };
+  const navigate = useNavigate()
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setServerError("");
-    setDone(false);
-    if (!validate()) return;
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          email: values.email.trim().toLowerCase(),
-          password: values.password,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.success === false) {
-        const msg =
-          data?.error ||
-          (Array.isArray(data?.errors) && data.errors[0]?.msg) ||
-          "Wrong credentials. Check your email and password.";
-        setServerError(typeof msg === "string" ? msg : "Sign in failed.");
-        return;
-      }
-      setDone(true);
-    } catch {
-      setServerError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    await submit();
+    
+
   };
 
   return (
@@ -70,7 +40,7 @@ export default function Signin({ onSwitch }) {
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
-          value={values.email}
+          value={values.email ?? ""}
           onChange={set("email")}
           className={inputClass(errors.email)}
         />
@@ -83,13 +53,13 @@ export default function Signin({ onSwitch }) {
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             placeholder="••••••••"
-            value={values.password}
+            value={values.password ?? ""}
             onChange={set("password")}
             className={`${inputClass(errors.password)} pr-16`}
           />
           <button
             type="button"
-            onClick={() => setShowPassword((s) => !s)}
+            onClick={toggleShowPassword}
             className="absolute inset-y-0 right-0 px-3 text-xs font-medium uppercase tracking-wider text-neutral-500 hover:text-black"
           >
             {showPassword ? "Hide" : "Show"}

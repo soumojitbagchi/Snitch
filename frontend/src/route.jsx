@@ -1,10 +1,11 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import AuthPage from "./features/auth/UI/AuthPage.jsx";
+import Home from "./features/product/UI/Home.jsx";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/signin" replace />,
+    element: <Home/>,
   },
   {
     path: "/signin",
