@@ -17,13 +17,13 @@ const router = createBrowserRouter([
     element: <AuthPage initialMode="signup" />,
   },
   {
+    path:"/auth/success",
+    element: <OauthSuccess/>
+  },
+  {
     path: "*",
     element: <Navigate to="/signin" replace />,
   },
-  {
-    path:"/auth/sucess",
-    element: <OauthSuccess/>
-  }
 ]);
 
 export default router;

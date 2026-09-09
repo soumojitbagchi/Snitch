@@ -36,7 +36,7 @@ const signinController = async (req, res) => {
       error: "wrong credentials",
     });
   }
-  const isMatch = bcrypt.compare(password, isUserExists.password)
+  const isMatch = await bcrypt.compare(password, isUserExists.password)
   if (!isMatch) {
     return res.status(401).json({
       success: false,
@@ -73,12 +73,6 @@ const signupController = async (req, res) => {
     user,
   });
 };
-const googleCallback = async (req, res) => {
-
-  console.log(req.email)
-  res.redirect('http://localhost:5173/')
-
-}
 const googleVerifyCallback = async (
   accessToken,
   refreshToken,
@@ -88,6 +82,7 @@ const googleVerifyCallback = async (
   try {
     const email = profile?.emails?.[0]?.value?.toLowerCase();
     if (!email) {
+      console.error("[googleVerify] no email in profile:", profile?.id);
       return done(new Error("Google profile has no email"), null);
     }
 
@@ -114,6 +109,7 @@ const googleVerifyCallback = async (
     });
     return done(null, user);
   } catch (err) {
+    console.error("[googleVerify] DB error:", err?.message);
     return done(err, null);
   }
 };
@@ -121,11 +117,11 @@ const googleVerifyCallback = async (
 const googleCallbackController = async (req, res) => {
   const user = req.user;
   if (!user) {
-    return res.redirect(`${config.CLIENT_URL}/login?error=oauth_failed`);
+    return res.redirect(`${config.CLIENT_URL}/signin?error=oauth`);
   }
   const token = issueToken(user);
   setTokenCookie(res, token);
-  return res.redirect(`${config.CLIENT_URL}/`); //redirect link 
+  return res.redirect(`${config.CLIENT_URL}/auth/success?token=${token}`); // add token 
 };
 
 export { signinController, signupController, googleVerifyCallback, googleCallbackController };

@@ -117,7 +117,7 @@ export default function AuthPage({ initialMode = "signin" }) {
             </div>
 
             <a
-              href="/api/auth/google/callback"
+              href="/api/auth/google"
               className="flex h-12 w-full items-center justify-center gap-2.5 border border-neutral-300 text-[12px] font-semibold uppercase tracking-[0.16em] transition-colors hover:border-black"
             >
               <GoogleIcon />
