@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { config } from "../config/config.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { warn } from "console";
 
 // Helper: issue JWT for any authed user (local or google)
 const issueToken = (user) => {
@@ -124,11 +125,25 @@ const googleCallbackController = async (req, res) => {
   return res.redirect(`${config.CLIENT_URL}/auth/success?token=${token}`); // add token 
 };
 
-export { signinController, signupController, googleVerifyCallback, googleCallbackController };
+const getMe= async (req,res)=>{
+  const user = req.client;
+  if(!user){
+    return res.status(401).json({
+      warn:"User not found",
+    })
+  }
+  return res.status(200).json({
+    success: true,
+    user,
+  });
+}
+
+export { signinController, signupController, googleVerifyCallback, googleCallbackController, getMe };
 
 export default {
   signinController,
   signupController,
   googleVerifyCallback,
   googleCallbackController,
+  getMe
 };
