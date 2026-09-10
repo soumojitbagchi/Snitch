@@ -34,6 +34,9 @@ if(!process.env.GOOGLE_AUTH_CLIENT_ID){
     throw new Error("client id isnt defined")
 
 }
+if(!process.env.IMAGEKIT_PRIVATE_KEY){
+    throw new Error("imagekit private key isnt defined")
+}
 
 export const config={
     MONGO_URI:process.env.MONGO_URI,
@@ -41,5 +44,6 @@ export const config={
     PORT:process.env.PORT,
     CLIENT_URL:process.env.CLIENT_URL,
     GOOGLE_AUTH_CLIENT_ID:process.env.GOOGLE_AUTH_CLIENT_ID,
-    GOOGLE_AUTH_SECRET_KEY:process.env.GOOGLE_AUTH_SECRET_KEY
+    GOOGLE_AUTH_SECRET_KEY:process.env.GOOGLE_AUTH_SECRET_KEY,
+    IMAGEKIT_PRIVATE_KEY:process.env.IMAGEKIT_PRIVATE_KEY
 }
