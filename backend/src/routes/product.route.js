@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createProduct , updateProductImage, updatePriceInfo, updateTitle, updateDescription } from "../controller/product.controller.js";
+import { createProduct , updateProductImage, updatePriceInfo, updateTitle, updateDescription, allProducts, allProductsBySeller } from "../controller/product.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import multer from 'multer'
 
@@ -16,5 +16,7 @@ productRouter.put("/update-image/:id", authMiddleware, upload.array('images',5),
 productRouter.put("/update-price/:id", authMiddleware, updatePriceInfo);
 productRouter.put("/update-title/:id", authMiddleware, updateTitle);
 productRouter.put("/update-description/:id", authMiddleware, updateDescription);
+productRouter.get("/all", authMiddleware, allProducts);
+productRouter.get("/all-by-seller", authMiddleware, allProductsBySeller);
 
 export default productRouter;
