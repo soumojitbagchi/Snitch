@@ -12,7 +12,7 @@ export const authMiddleware = async (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, config.JWT_KEY);
-    const legitUser = await userData.findById(decoded.id);
+    const legitUser = await userData.findById(decoded.id).select("fullname email contact role");
     if (!legitUser) {
       return res.status(401).json({
         success: false,

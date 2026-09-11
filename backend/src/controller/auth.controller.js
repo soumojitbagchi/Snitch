@@ -5,7 +5,6 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { warn } from "console";
 
-// Helper: issue JWT for any authed user (local or google)
 const issueToken = (user) => {
   return jwt.sign(
     {
@@ -14,7 +13,7 @@ const issueToken = (user) => {
       email: user.email,
     },
     config.JWT_KEY,
-    { expiresIn: "1h" },
+    { expiresIn: "6h" },
   );
 };
 
@@ -23,7 +22,7 @@ const setTokenCookie = (res, token) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 1000, // 1h, matches JWT
+    maxAge: 60 * 60 * 1000,
     path: "/",
   });
 };
@@ -122,7 +121,7 @@ const googleCallbackController = async (req, res) => {
   }
   const token = issueToken(user);
   setTokenCookie(res, token);
-  return res.redirect(`${config.CLIENT_URL}/auth/success?token=${token}`); // add token 
+  return res.redirect(`${config.CLIENT_URL}/auth/success?token=${token}`);
 };
 
 const getMe= async (req,res)=>{

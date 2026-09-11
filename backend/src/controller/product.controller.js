@@ -17,9 +17,11 @@ export const createProduct = async (req, res) => {
             title,
             description,
             images: files,
-            price: {
-                amount: priceAmount,
-                currency: priceCurrency || "INR",
+            verient: {
+                price:{
+                    basePrice: priceAmount,
+                    currency: priceCurrency || "INR",
+                }
             },
             seller,
         });
@@ -37,7 +39,7 @@ export const updatePriceInfo = async (req, res) => {
         if (!data) {
             return res.status(404).json({ message: "Product not found", success: false });
         }
-        data.price.basePrice = priceAmount;
+        data.verient.price.basePrice = priceAmount;
         await data.save();
         res.status(200).json({ message: "Price updated successfully", data, success: true });
     } catch (error) {
