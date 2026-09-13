@@ -3,7 +3,7 @@ import authValidator from "../validation/auth.validation.js";
 import authController from "../controller/auth.controller.js";
 import passport from "passport";
 import { config } from "../config/config.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
+import { authMiddleware, authenticate } from "../middleware/auth.middleware.js";
 
 const authRouter = Router();
 
@@ -18,6 +18,7 @@ authRouter.post(
   authController.signupController,
 );
 authRouter.get("/me", authMiddleware, authController.getMe);
+authRouter.patch("/role", authenticate, authController.updateRoleController);
 authRouter.get(
   "/google",
   passport.authenticate("google", {
