@@ -1,302 +1,183 @@
-import { useEffect, useState } from "react";
-import Field from "../../auth/UI/Field";
+import { useEffect, useRef, useState } from "react";
 import { inputClass } from "../../auth/UI/inputClass";
-import { useProduct } from "../hooks/useProduct";
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP"];
+const blankVariant = () => ({ size: "", color: "", price: "", stock: "0" });
 
-const blankVariant = () => ({ size: "", color: "", price: "", stock: "" });
-
-function IconPlus() {
+function FormField({ id, label, error, children }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-    </svg>
+    <div>
+      <label htmlFor={id} className="mb-2 block text-sm font-medium">{label}</label>
+      {children}
+      {error && <p id={id + "-error"} className="mt-1 text-sm text-red-700">{error}</p>}
+    </div>
   );
 }
 
-function IconX() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconImage() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="16" />
-      <circle cx="9" cy="10" r="1.6" />
-      <path d="m4.5 18 5-5 3.5 3.5 2.5-2.5 4 4" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-export default function ProductForm({
-  initialValues = null,
-  submitLabel = "Publish product",
-  submitting = false,
-  onSubmit = () => { },
-  onCancel = () => { },
-}) {
-  const { createProductHandler, submitting: submittingState, error: serverError, success: serverMessage } = useProduct();
-  const isSubmitting = submitting || submittingState;
+export default function ProductForm({ initialValues = null, onSubmit, onCancel }) {
+  const editing = Boolean(initialValues);
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
   const [currency, setCurrency] = useState(initialValues?.currency ?? "INR");
-  const [variants, setVariants] = useState(
-    initialValues?.variants?.length ? initialValues.variants : [blankVariant()],
-  );
-  const [previews, setPreviews] = useState(initialValues?.images ?? []);
-  // Real File objects to send as `media` (previews above are only display URLs).
-  const [files, setFiles] = useState([]);
+  const [variants, setVariants] = useState(initialValues?.variants ?? [blankVariant()]);
+  const [uploads, setUploads] = useState([]);
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const busy = useRef(false);
+  const objectUrls = useRef(new Set());
+  const errorSummary = useRef(null);
+  const existingImages = initialValues?.images ?? [];
+  const previews = uploads.length ? uploads.map((item) => item.url) : existingImages;
 
-  // Revoke blob preview URLs on unmount to avoid leaking object URLs.
   useEffect(() => {
-    return () => {
-      setPreviews((current) => {
-        current.forEach((src) => {
-          if (typeof src === "string" && src.startsWith("blob:")) URL.revokeObjectURL(src);
-        });
-        return current;
-      });
-    };
+    const urls = objectUrls.current;
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, []);
 
-  const setVariant = (index, key) => (e) => {
-    setVariants((prev) => prev.map((v, i) => (i === index ? { ...v, [key]: e.target.value } : v)));
+  useEffect(() => {
+    if (Object.values(errors).some(Boolean) || serverError) errorSummary.current?.focus();
+  }, [errors, serverError]);
+
+  const setVariant = (index, key, value) => {
+    setVariants((previous) => previous.map((variant, i) => i === index ? { ...variant, [key]: value } : variant));
   };
 
-  const addVariant = () => setVariants((prev) => [...prev, blankVariant()]);
-  const removeVariant = (index) =>
-    setVariants((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
-
-  const addFiles = (e) => {
-    const picked = Array.from(e.target.files ?? []).slice(0, 5 - previews.length);
-    if (picked.length === 0) return;
-    setFiles((prev) => [...prev, ...picked]);
-    setPreviews((prev) => [...prev, ...picked.map((f) => URL.createObjectURL(f))]);
-    e.target.value = "";
-  };
-
-  const removePreview = (index) => {
-    setPreviews((prev) => {
-      const src = prev[index];
-      if (typeof src === "string" && src.startsWith("blob:")) URL.revokeObjectURL(src);
-      return prev.filter((_, i) => i !== index);
+  const pickFiles = (event) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) return;
+    let message = "";
+    if (files.length + uploads.length > 5) message = "Choose up to 5 images.";
+    else if (files.some((file) => !file.type.startsWith("image/"))) message = "Choose image files only.";
+    else if (files.some((file) => file.size > 5 * 1024 * 1024)) message = "Each image must be 5 MB or smaller.";
+    setErrors((previous) => ({ ...previous, "product-images": message }));
+    if (message) return;
+    const picked = files.map((file) => {
+      const url = URL.createObjectURL(file);
+      objectUrls.current.add(url);
+      return { file, url };
     });
-    // `files` only holds newly picked Files; remote initialValues images have no File.
-    // Indices line up while all previews are newly picked (create flow).
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setUploads((previous) => [...previous, ...picked]);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const removeUpload = (index) => {
+    URL.revokeObjectURL(uploads[index].url);
+    objectUrls.current.delete(uploads[index].url);
+    setUploads((previous) => previous.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (busy.current) return;
     const next = {};
-    if (!title.trim()) next.title = "Title is required.";
-    if (!description.trim()) next.description = "Description is required.";
-    if (variants.some((v) => v.price !== "" && Number.isNaN(Number(v.price))))
-      next.variants = "Price must be a number.";
-    if (previews.length === 0) next.images = "At least one image is required.";
-    const oversized = files.find((f) => f.size > 5 * 1024 * 1024);
-    if (oversized) next.images = `"${oversized.name}" exceeds 5 MB.`;
+    if (!title.trim()) next["product-title"] = "Enter a title.";
+    if (!description.trim()) next["product-description"] = "Enter a description.";
+    if (!editing && !uploads.length) next["product-images"] = "Choose at least one image.";
+    variants.forEach((variant, index) => {
+      if (!String(variant.price).trim() || !Number.isFinite(Number(variant.price)) || Number(variant.price) < 0) {
+        next["price-" + index] = "Enter a price of 0 or more.";
+      }
+      if (!editing && (!String(variant.stock).trim() || !Number.isSafeInteger(Number(variant.stock)) || Number(variant.stock) < 0)) {
+        next["stock-" + index] = "Enter a whole stock quantity of 0 or more.";
+      }
+    });
     setErrors(next);
-    if (Object.keys(next).length > 0 || isSubmitting) return;
-    // Backend create expects flat priceAmount/priceCurrency: use the first priced variant.
-    const firstPriced = variants.find((v) => v.price !== "" && !Number.isNaN(Number(v.price)));
-    const values = { title: title.trim(), description: description.trim(), currency, variants, imageCount: previews.length };
-    const result = await createProductHandler(
-      {
-        title: values.title,
-        description: values.description,
-        priceAmount: firstPriced ? Number(firstPriced.price) : 0,
-        priceCurrency: currency,
-      },
-      files,
-    );
-    if (result.ok) {
-      onSubmit(values);
+    setServerError("");
+    if (Object.keys(next).length) return;
+    busy.current = true;
+    setSubmitting(true);
+    try {
+      const result = await onSubmit({
+        title: title.trim(), description: description.trim(), currency,
+        variants: variants.map((variant) => ({ ...variant, size: variant.size.trim(), color: variant.color.trim() })),
+        images: uploads.map((item) => item.file),
+      });
+      if (!result?.ok) setServerError(result?.error || "Could not save the product. Please try again.");
+    } catch {
+      setServerError("Could not save the product. Please try again.");
+    } finally {
+      busy.current = false;
+      setSubmitting(false);
     }
   };
 
+  const errorProps = (id) => ({ "aria-invalid": Boolean(errors[id]), "aria-describedby": errors[id] ? id + "-error" : undefined });
+  const visibleErrors = Object.entries(errors).filter(([, message]) => message);
+
   return (
-    <form onSubmit={handleSubmit} noValidate className="mx-auto w-full max-w-[720px] px-5 py-10 sm:px-8">
-      <h1 className="font-serif text-[34px] font-light leading-tight tracking-tight">
-        {initialValues ? "Edit product." : "New product."}
-      </h1>
-      <p className="mt-2 text-[14px] leading-6 text-neutral-500">
-        List it once, sell it everywhere on Snitch.
+    <form onSubmit={handleSubmit} noValidate aria-busy={submitting} className="mx-auto w-full max-w-[760px] px-5 py-10 sm:px-8">
+      <h1 className="text-2xl font-semibold">{editing ? "Edit product" : "New product"}</h1>
+      <p className="mt-2 text-sm leading-6 text-neutral-600">
+        {editing ? "Update your product details, prices and photos." : "Add the details and photos for your product."}
       </p>
 
-      <div className="mt-8 space-y-5">
-        <Field label="Title" htmlFor="product-title" error={errors.title}>
-          <input
-            id="product-title"
-            type="text"
-            autoComplete="off"
-            placeholder="Oversized Graphic Tee - Black"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={inputClass(errors.title)}
-          />
-        </Field>
+      {(visibleErrors.length > 0 || serverError) && (
+        <div ref={errorSummary} tabIndex={-1} role="alert" className="mt-6 border border-red-200 bg-red-50 p-4 text-sm text-red-800 focus:outline-2">
+          {serverError || "Please check the following fields:"}
+          {visibleErrors.length > 0 && <ul className="mt-2 list-inside list-disc">
+            {visibleErrors.map(([id, message]) => <li key={id}><a href={"#" + id} className="underline">{message}</a></li>)}
+          </ul>}
+        </div>
+      )}
 
-        <Field label="Description" htmlFor="product-description" error={errors.description}>
-          <textarea
-            id="product-description"
-            rows={4}
-            placeholder="Fabric, fit, care — what the buyer needs to know."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className={`${inputClass(errors.description)} h-auto py-3.5`}
-          />
-        </Field>
+      <fieldset disabled={submitting} className="mt-8 min-w-0 space-y-6 disabled:opacity-70">
+        <FormField id="product-title" label="Title" error={errors["product-title"]}>
+          <input id="product-title" value={title} onChange={(event) => setTitle(event.target.value)} autoComplete="off" required {...errorProps("product-title")} className={inputClass(errors["product-title"])} />
+        </FormField>
+        <FormField id="product-description" label="Description" error={errors["product-description"]}>
+          <textarea id="product-description" rows={4} value={description} onChange={(event) => setDescription(event.target.value)} required {...errorProps("product-description")} className={inputClass(errors["product-description"]) + " h-auto py-3"} />
+        </FormField>
 
         <div>
-          <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-500">
-            Images · {previews.length}/5
-          </span>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-            {previews.map((src, i) => (
-              <div key={`${src}-${i}`} className="group relative aspect-square overflow-hidden bg-neutral-100">
-                <img src={src} alt={`Product preview ${i + 1}`} className="h-full w-full object-cover object-top" />
-                <button
-                  type="button"
-                  aria-label={`Remove image ${i + 1}`}
-                  onClick={() => removePreview(i)}
-                  className="absolute right-1 top-1 bg-black p-1.5 text-white opacity-0 transition-opacity hover:bg-neutral-800 group-hover:opacity-100"
-                >
-                  <IconX />
-                </button>
-              </div>
-            ))}
-            {previews.length < 5 && (
-              <label
-                htmlFor="product-images"
-                className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 border border-dashed border-neutral-300 text-neutral-500 transition-colors hover:border-black hover:text-black"
-              >
-                <IconImage />
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em]">Upload</span>
-                <input
-                  id="product-images"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={addFiles}
-                  className="sr-only"
-                />
-              </label>
-            )}
-          </div>
-          <p className="mt-1.5 text-xs leading-5 text-neutral-400">First image becomes the cover. JPG or PNG, max 5 MB each.</p>
-          {errors.images && (
-            <p role="alert" className="mt-1.5 text-xs leading-5 text-red-600">{errors.images}</p>
-          )}
-        </div>
-
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-500">
-              Variants
-            </span>
-            <span className="flex items-center gap-2">
-              <label htmlFor="product-currency" className="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-500">
-                Currency
-              </label>
-              <select
-                id="product-currency"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="h-9 border border-neutral-300 bg-white px-2 text-[13px] outline-none hover:border-neutral-500 focus:border-black"
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </span>
-          </div>
-          <div className="divide-y divide-neutral-200 border border-neutral-200">
-            {variants.map((v, i) => (
-              <div key={i} className="grid grid-cols-2 gap-3 p-3.5 sm:grid-cols-[1fr_1fr_1fr_1fr_auto]">
-                <input
-                  aria-label={`Variant ${i + 1} size`}
-                  placeholder="Size"
-                  value={v.size}
-                  onChange={setVariant(i, "size")}
-                  className={inputClass(false)}
-                />
-                <input
-                  aria-label={`Variant ${i + 1} color`}
-                  placeholder="Color"
-                  value={v.color}
-                  onChange={setVariant(i, "color")}
-                  className={inputClass(false)}
-                />
-                <input
-                  aria-label={`Variant ${i + 1} price`}
-                  placeholder="Price"
-                  inputMode="decimal"
-                  value={v.price}
-                  onChange={setVariant(i, "price")}
-                  className={inputClass(errors.variants)}
-                />
-                <input
-                  aria-label={`Variant ${i + 1} stock`}
-                  placeholder="Stock"
-                  inputMode="numeric"
-                  value={v.stock}
-                  onChange={setVariant(i, "stock")}
-                  className={inputClass(false)}
-                />
-                <button
-                  type="button"
-                  aria-label={`Remove variant ${i + 1}`}
-                  onClick={() => removeVariant(i)}
-                  disabled={variants.length === 1}
-                  className="col-span-2 p-2 text-neutral-400 transition-colors hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 sm:col-span-1"
-                >
-                  <IconX />
-                </button>
-              </div>
-            ))}
-          </div>
-          {errors.variants && (
-            <p role="alert" className="mt-1.5 text-xs leading-5 text-red-600">{errors.variants}</p>
-          )}
-          <button
-            type="button"
-            onClick={addVariant}
-            className="mt-3 flex h-10 items-center gap-2 border border-neutral-300 px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-700 transition-colors hover:border-black hover:text-black active:scale-[0.98]"
-          >
-            <IconPlus /> Add variant
-          </button>
-        </div>
-
-        {(serverError || serverMessage) && (
-          <p role={serverError ? "alert" : "status"} className={`text-[13px] leading-5 ${serverError ? "text-red-600" : "text-green-700"}`}>
-            {serverError || serverMessage}
+          <label htmlFor="product-images" className="mb-2 block text-sm font-medium">{editing ? "Replace images" : "Images"}</label>
+          <p id="product-images-hint" className="mb-3 text-sm leading-6 text-neutral-600">
+            Up to 5 images, 5 MB each. The first image is the cover.
+            {editing && " Choose a new set to replace all existing photos, or leave them unchanged."}
           </p>
-        )}
+          {previews.length > 0 && <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-5">
+            {previews.map((url, index) => <div key={url + "-" + index} className="relative aspect-square bg-neutral-100">
+              <img src={url} alt={"Product preview " + (index + 1)} className="h-full w-full object-cover" />
+              {uploads.length > 0 && <button type="button" aria-label={"Remove selected image " + (index + 1)} onClick={() => removeUpload(index)} className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center bg-white text-xl text-black focus-visible:outline-2">×</button>}
+            </div>)}
+          </div>}
+          <input id="product-images" type="file" accept="image/*" multiple onChange={pickFiles} {...errorProps("product-images")} aria-describedby={"product-images-hint" + (errors["product-images"] ? " product-images-error" : "")} className="block min-h-11 w-full min-w-0 text-sm file:mr-3 file:min-h-11 file:border file:border-neutral-300 file:bg-white file:px-3 file:text-sm file:text-black" />
+          {errors["product-images"] && <p id="product-images-error" className="mt-1 text-sm text-red-700">{errors["product-images"]}</p>}
+        </div>
 
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex h-12 flex-1 items-center justify-center border border-neutral-300 text-[12px] font-semibold uppercase tracking-[0.2em] transition-colors hover:border-black active:scale-[0.98]"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex h-12 flex-[2] items-center justify-center bg-black text-[12px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
-          >
-            {isSubmitting ? "Publishing..." : submitLabel}
+        <div className="space-y-4 border-t border-neutral-200 pt-6">
+          <h2 className="font-medium">{editing ? "Pricing and inventory" : "Price and inventory"}</h2>
+          {editing ? (
+            <p className="text-sm leading-6 text-neutral-600">Prices can be edited. Size, color, stock and currency cannot be changed after publishing yet.</p>
+          ) : (
+            <FormField id="product-currency" label="Currency">
+              <select id="product-currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className={inputClass(false)}>
+                {CURRENCIES.map((value) => <option key={value}>{value}</option>)}
+              </select>
+            </FormField>
+          )}
+          {variants.length === 0 && <p className="text-sm text-neutral-600">This product has no variants to price.</p>}
+          {variants.map((variant, index) => (
+            <div key={index} className="grid grid-cols-1 gap-4 border border-neutral-200 p-4 sm:grid-cols-2">
+              {editing && variants.length > 1 && <h3 className="text-sm font-medium sm:col-span-2">Variant {index + 1}</h3>}
+              {[["size", "Size"], ["color", "Color"], ["price", "Price (" + (variant.currency || currency) + ")"], ["stock", "Stock"]].map(([key, label]) => {
+                const id = key + "-" + index;
+                return <FormField key={key} id={id} label={label} error={errors[id]}>
+                  <input id={id} type={key === "price" || key === "stock" ? "number" : "text"} min={key === "price" || key === "stock" ? "0" : undefined} step={key === "price" ? "any" : key === "stock" ? "1" : undefined} value={variant[key]} disabled={editing && key !== "price"} onChange={(event) => setVariant(index, key, event.target.value)} {...errorProps(id)} className={inputClass(errors[id]) + " disabled:bg-neutral-100 disabled:text-neutral-600"} />
+                </FormField>;
+              })}
+            </div>
+          ))}
+          {!editing && <p className="text-sm text-neutral-600">Each new product supports one size and color combination.</p>}
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-3 border-t border-neutral-200 pt-6">
+          <button type="button" onClick={onCancel} className="min-h-12 border border-neutral-300 px-5 text-sm font-medium hover:bg-neutral-100 focus-visible:outline-2">Cancel</button>
+          <button type="submit" className="min-h-12 bg-black px-5 text-sm font-medium text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2">
+            {submitting ? "Saving…" : editing ? "Save changes" : "Publish product"}
           </button>
         </div>
-      </div>
+      </fieldset>
     </form>
   );
 }

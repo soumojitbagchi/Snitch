@@ -1,4 +1,4 @@
-import { formatPrice, mockProducts, stockState, totalStock } from "./mockProducts";
+import { formatPrice, stockState, totalStock, variantPriceRange } from "../utils/product";
 
 function IconPencil() {
   return (
@@ -43,34 +43,30 @@ function StockBadge({ product }) {
 }
 
 function priceLabel(product) {
-  const prices = (product.verient ?? [])
-    .map((v) => v.price)
-    .filter((p) => p && typeof p.basePrice === "number");
-  if (prices.length === 0) return "—";
-  const min = Math.min(...prices.map((p) => p.basePrice));
-  const max = Math.max(...prices.map((p) => p.basePrice));
-  const currency = prices[0].currency ?? "INR";
+  const range = variantPriceRange(product);
+  if (!range) return "—";
+  const { min, max, currency } = range;
   return min === max
     ? formatPrice({ basePrice: min, currency })
     : `${formatPrice({ basePrice: min, currency })}+`;
 }
 
-function RowActions({ onEdit, onDelete }) {
+function RowActions({ product, onEdit, onDelete }) {
   return (
     <div className="flex items-center justify-end gap-1">
       <button
         type="button"
-        aria-label="Edit product"
+        aria-label={`Edit ${product.title}`}
         onClick={onEdit}
-        className="p-2 text-neutral-500 transition-all hover:text-black active:scale-95"
+        className="flex h-11 w-11 items-center justify-center text-neutral-600 hover:bg-neutral-100 focus-visible:outline-2"
       >
         <IconPencil />
       </button>
       <button
         type="button"
-        aria-label="Delete product"
+        aria-label={`Delete ${product.title}`}
         onClick={onDelete}
-        className="p-2 text-neutral-500 transition-all hover:text-red-600 active:scale-95"
+        className="flex h-11 w-11 items-center justify-center text-neutral-600 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2"
       >
         <IconTrash />
       </button>
@@ -96,7 +92,7 @@ export function SellerProductsSkeleton() {
 }
 
 export default function SellerProducts({
-  products = mockProducts,
+  products = [],
   loading = false,
   onAdd = () => {},
   onEdit = () => {},
@@ -106,34 +102,34 @@ export default function SellerProducts({
     <section aria-label="My products" className="mx-auto w-full max-w-[1100px] px-5 py-10 sm:px-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-[34px] font-light leading-tight tracking-tight">
-            My products.
+          <h1 className="text-2xl font-semibold">
+            My products
           </h1>
-          <p className="mt-1.5 text-[13px] uppercase tracking-[0.18em] text-neutral-500">
-            {loading ? "Loading" : `${products.length} live`}
+          <p className="mt-1 text-sm text-neutral-600">
+            {loading ? "Loading products…" : `${products.length} product${products.length === 1 ? "" : "s"}`}
           </p>
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="flex h-12 items-center bg-black px-6 text-[12px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-neutral-800 active:scale-[0.98]"
+          className="flex min-h-11 items-center bg-black px-4 text-sm font-medium text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           Add product
         </button>
       </div>
 
       {loading ? (
-        <SellerProductsSkeleton />
+        <div role="status" aria-label="Loading products"><SellerProductsSkeleton /></div>
       ) : products.length === 0 ? (
         <div className="flex flex-col items-center border border-neutral-200 px-6 py-20 text-center">
-          <p className="font-serif text-3xl font-light">No products yet.</p>
+          <h2 className="text-lg font-semibold">No products yet</h2>
           <p className="mt-2 max-w-xs text-[14px] leading-6 text-neutral-500">
             Add your first product to open your store.
           </p>
           <button
             type="button"
             onClick={onAdd}
-            className="mt-6 flex h-12 items-center bg-black px-6 text-[12px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-neutral-800 active:scale-[0.98]"
+            className="mt-6 flex min-h-11 items-center bg-black px-4 text-sm font-medium text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Add product
           </button>
@@ -151,11 +147,11 @@ export default function SellerProducts({
             {products.map((p) => (
               <li
                 key={p._id}
-                className="grid grid-cols-[64px_1fr_auto] items-center gap-4 py-4 md:grid-cols-[64px_1fr_140px_140px_96px]"
+                className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-2 py-4 md:grid-cols-[64px_minmax(0,1fr)_140px_140px_96px] md:gap-4"
               >
-                <div className="h-16 w-14 overflow-hidden bg-neutral-100">
+                <div className="h-16 w-12 overflow-hidden bg-neutral-100">
                   {p.images?.[0]?.url ? (
-                    <img src={p.images[0].url} alt="" loading="lazy" className="h-full w-full object-cover object-top grayscale-[85%] transition-all duration-500 hover:grayscale-0" />
+                    <img src={p.images[0].url} alt="" loading="lazy" className="h-full w-full object-cover object-top" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-[10px] uppercase tracking-[0.14em] text-neutral-400">
                       —
@@ -167,14 +163,14 @@ export default function SellerProducts({
                   <p className="mt-0.5 truncate text-[13px] text-neutral-500">
                     {(p.verient ?? []).length} variant{(p.verient ?? []).length === 1 ? "" : "s"}
                   </p>
-                  <div className="mt-1 flex items-center gap-3 md:hidden">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 md:hidden">
                     <span className="text-[14px] font-semibold">{priceLabel(p)}</span>
                     <StockBadge product={p} />
                   </div>
                 </div>
                 <span className="hidden text-[14px] font-semibold md:block">{priceLabel(p)}</span>
                 <span className="hidden md:block"><StockBadge product={p} /></span>
-                <RowActions onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />
+                <RowActions product={p} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />
               </li>
             ))}
           </ul>
