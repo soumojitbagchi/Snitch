@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createProduct , updateProductImage, updatePriceInfo, updateTitle, updateDescription, allProducts, allProductsBySeller } from "../controller/product.controller.js";
+import { createProduct , updateProductImage, updatePriceInfo, updateTitle, updateDescription, allProducts, allProductsBySeller, deleteProduct } from "../controller/product.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import multer from 'multer'
 
@@ -20,10 +20,18 @@ const upload = multer({
 
 productRouter.post("/create", authMiddleware, upload.array('images', 5), createProduct);
 productRouter.put("/update-image/:id", authMiddleware, upload.array('images',5), updateProductImage);
-productRouter.put("/update-price/:id", authMiddleware, updatePriceInfo);
-productRouter.put("/update-title/:id", authMiddleware, updateTitle);
-productRouter.put("/update-description/:id", authMiddleware, updateDescription);
+productRouter.put("/update-price/:id", authMiddleware, upload.none(), updatePriceInfo);
+productRouter.put("/update-title/:id", authMiddleware, upload.none(), updateTitle);
+productRouter.put("/update-description/:id", authMiddleware, upload.none(), updateDescription);
+productRouter.delete("/:id", authMiddleware, deleteProduct);
 productRouter.get("/all", authMiddleware, allProducts);
 productRouter.get("/all-by-seller", authMiddleware, allProductsBySeller);
+
+productRouter.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError || err?.message === 'Only image files are allowed!') {
+        return res.status(400).json({ message: err.message, success: false });
+    }
+    next(err);
+});
 
 export default productRouter;
