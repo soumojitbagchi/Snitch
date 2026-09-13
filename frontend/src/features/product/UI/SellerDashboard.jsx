@@ -1,265 +1,174 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import SellerProducts from "./SellerProducts";
 import ProductForm from "./ProductForm";
-import { mockProducts } from "./mockProducts";
+import { useProduct } from "../hooks/useProduct";
 
-function IconGrid() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="3" y="3" width="8" height="8" />
-      <rect x="13" y="3" width="8" height="8" />
-      <rect x="3" y="13" width="8" height="8" />
-      <rect x="13" y="13" width="8" height="8" />
-    </svg>
-  );
-}
-
-function IconPlus() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconStore() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M4 9l1.5-5h13L20 9M4 9h16M4 9v11h16V9M9 20v-6h6v6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-const toInitialValues = (p) => ({
-  title: p.title,
-  description: p.description,
-  currency: p.verient?.[0]?.price?.currency ?? "INR",
-  images: (p.images ?? []).map((i) => i.url),
-  variants: (p.verient ?? []).map((v) => ({
-    size: v.attributes?.size ?? "",
-    color: v.attributes?.color ?? "",
-    price: v.price?.basePrice != null ? String(v.price.basePrice) : "",
-    stock: v.stock?.basePrice != null ? String(v.stock.basePrice) : "",
+const toInitialValues = (product) => ({
+  title: product.title,
+  description: product.description,
+  currency: product.verient?.[0]?.price?.currency ?? "INR",
+  images: (product.images ?? []).map((image) => image.url),
+  variants: (product.verient ?? []).map((variant) => ({
+    size: variant.attributes?.size ?? "",
+    color: variant.attributes?.color ?? "",
+    price: variant.price?.basePrice != null ? String(variant.price.basePrice) : "",
+    currency: variant.price?.currency ?? "INR",
+    stock: variant.stock?.basePrice != null ? String(variant.stock.basePrice) : "0",
   })),
 });
 
-const fromFormValues = (v) => ({
-  title: v.title,
-  description: v.description,
-  images: [],
-  verient: v.variants
-    .filter((row) => row.size.trim() || row.color.trim() || row.price !== "")
-    .map((row) => ({
-      images: [],
-      price: { basePrice: Number(row.price) || 0, currency: v.currency },
-      stock: { basePrice: Number(row.stock) || 0, currency: v.currency },
-      attributes: { ...(row.size.trim() ? { size: row.size.trim() } : {}), ...(row.color.trim() ? { color: row.color.trim() } : {}) },
-    })),
-});
+function DeleteModal({ product, busy, error, onCancel, onConfirm }) {
+  const dialog = useRef(null);
+  useEffect(() => {
+    const element = dialog.current;
+    element.showModal();
+    return () => element.close();
+  }, []);
 
-function DeleteModal({ product, onCancel, onConfirm }) {
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Delete ${product.title}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5"
-      onClick={onCancel}
-    >
-      <div
-        className="w-full max-w-sm border border-neutral-200 bg-white p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-red-600">
-          Delete product
-        </p>
-        <p className="mt-3 font-serif text-2xl font-light leading-snug">
-          Remove “{product.title}”?
-        </p>
-        <p className="mt-2 text-[14px] leading-6 text-neutral-500">
-          This takes it off the store immediately. You can’t undo this.
-        </p>
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex h-11 flex-1 items-center justify-center border border-neutral-300 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors hover:border-black active:scale-[0.98]"
-          >
-            Keep it
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="flex h-11 flex-1 items-center justify-center bg-red-600 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-red-700 active:scale-[0.98]"
-          >
-            Delete
-          </button>
-        </div>
+    <dialog ref={dialog} aria-labelledby="delete-title" aria-describedby="delete-description" aria-busy={busy}
+      onCancel={(event) => { event.preventDefault(); if (!busy) onCancel(); }}
+      className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-sm border border-neutral-200 bg-white p-6 text-neutral-900 backdrop:bg-black/40">
+      <h2 id="delete-title" className="text-xl font-semibold">Delete product?</h2>
+      <p id="delete-description" className="mt-3 break-words text-sm leading-6 text-neutral-600">
+        “{product.title}” will be removed from your store. This cannot be undone.
+      </p>
+      {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+      <div className="mt-6 flex justify-end gap-3">
+        <button type="button" autoFocus disabled={busy} onClick={onCancel} className="min-h-11 border border-neutral-300 px-4 text-sm font-medium disabled:opacity-50">Cancel</button>
+        <button type="button" disabled={busy} onClick={onConfirm} className="min-h-11 bg-red-700 px-4 text-sm font-medium text-white disabled:opacity-50">{busy ? "Deleting…" : "Delete"}</button>
       </div>
-    </div>
+    </dialog>
   );
 }
 
-const NAV = [
-  { to: "/seller", end: true, label: "Products", icon: <IconGrid /> },
-  { to: "/seller/new", end: false, label: "Add product", icon: <IconPlus /> },
-];
-
 export default function SellerDashboard() {
-  const [products, setProducts] = useState(mockProducts);
-  const [pendingDelete, setPendingDelete] = useState(null);
+  const productState = useProduct();
+  const { fetchProducts, loading, error, pendingDelete, deleteProduct, cancelDelete, isDeleting, getMutationError } = productState;
+  const [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState("");
+  const deleteLock = useRef(false);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchProducts(controller.signal).then(() => {
+      if (!controller.signal.aborted) setReady(true);
+    });
+    return () => controller.abort();
+  }, [fetchProducts]);
 
-  const addProduct = (values) => {
-    const product = {
-      _id: `mock-${Date.now()}`,
-      category: "New",
-      ...fromFormValues(values),
-    };
-    setProducts((prev) => [product, ...prev]);
-  };
-
-  const updateProduct = (id, values) => {
-    setProducts((prev) =>
-      prev.map((p) => (p._id === id ? { ...p, ...fromFormValues(values) } : p)),
-    );
-  };
-
-  const confirmDelete = () => {
-    setProducts((prev) => prev.filter((p) => p._id !== pendingDelete._id));
-    setPendingDelete(null);
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleteLock.current) return;
+    deleteLock.current = true;
+    const result = await deleteProduct(pendingDelete._id);
+    if (result.ok) setNotice("Product deleted.");
+    deleteLock.current = false;
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-neutral-900 lg:flex-row">
-      {/* Top bar (mobile) / sidebar (desktop) */}
-      <aside className="shrink-0 border-b border-neutral-200 bg-white lg:flex lg:min-h-screen lg:w-64 lg:flex-col lg:border-b-0 lg:border-r">
-        <div className="flex h-16 items-center justify-between px-5 sm:px-8 lg:px-6">
-          <Link to="/" className="text-lg font-bold uppercase tracking-[0.3em]">
-            Snitch
-          </Link>
-          <span className="bg-black px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
-            Seller
-          </span>
+      <aside className="shrink-0 border-b border-neutral-200 lg:min-h-screen lg:w-56 lg:border-r lg:border-b-0">
+        <div className="flex h-16 items-center justify-between px-5">
+          <Link to="/" className="text-lg font-bold uppercase tracking-[0.2em]">Snitch</Link>
+          <span className="text-xs text-neutral-600">Seller</span>
         </div>
-        <nav aria-label="Seller" className="flex gap-1 overflow-x-auto px-3 pb-3 sm:px-6 lg:flex-col lg:gap-0.5 lg:px-3 lg:pb-0 lg:pt-2">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex shrink-0 items-center gap-2.5 px-3 py-2.5 text-[12px] font-semibold uppercase tracking-[0.14em] transition-colors ${
-                  isActive ? "bg-black text-white" : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-                }`
-              }
-            >
-              {item.icon}
+        <nav aria-label="Seller" className="flex flex-wrap gap-1 px-3 pb-3 lg:flex-col">
+          {[{ to: "/seller", label: "Products", end: true }, { to: "/seller/new", label: "Add product" }].map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) =>
+              "flex min-h-11 items-center px-3 text-sm font-medium " + (isActive ? "bg-black text-white" : "text-neutral-600 hover:bg-neutral-100")}>
               {item.label}
             </NavLink>
           ))}
-          <Link
-            to="/"
-            className="flex shrink-0 items-center gap-2.5 px-3 py-2.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-black"
-          >
-            <IconStore />
-            View store
-          </Link>
+          <Link to="/" className="flex min-h-11 items-center px-3 text-sm text-neutral-600 hover:bg-neutral-100">View store</Link>
         </nav>
-        <div className="mt-auto hidden border-t border-neutral-200 p-6 lg:block">
-          <div className="flex items-center gap-3">
-            <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center bg-black text-[13px] font-semibold text-white">
-              S
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[14px] font-medium">Seller Studio</p>
-              <p className="text-[12px] text-neutral-500">FW26 · Drop 02</p>
+      </aside>
+      <main className="min-w-0 flex-1">
+        {notice && <div role="status" className="mx-5 mt-6 flex items-center justify-between gap-4 border border-neutral-200 p-3 text-sm sm:mx-8">
+          <span>{notice}</span><button type="button" onClick={() => setNotice("")} className="min-h-11 px-2 underline">Dismiss</button>
+        </div>}
+        {error ? (
+          <div className="mx-auto max-w-[760px] px-5 py-10 sm:px-8">
+            <h1 className="text-2xl font-semibold">Could not load products</h1>
+            <p role="alert" className="mt-3 text-sm leading-6 text-red-700">{error}</p>
+            <div className="mt-5 flex gap-4">
+              <button type="button" disabled={loading} onClick={() => fetchProducts()} className="min-h-11 bg-black px-4 text-sm text-white disabled:opacity-50">Try again</button>
+              <Link to="/signin" className="inline-flex min-h-11 items-center text-sm underline">Sign in</Link>
             </div>
           </div>
-        </div>
-      </aside>
-
-      {/* Content */}
-      <main className="min-w-0 flex-1">
-        <Outlet
-          context={{ products, addProduct, updateProduct, requestDelete: setPendingDelete }}
-        />
+        ) : <Outlet context={{ ...productState, loading: !ready || loading, setNotice }} />}
       </main>
-
-      {pendingDelete && (
-        <DeleteModal
-          product={pendingDelete}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={confirmDelete}
-        />
-      )}
+      {pendingDelete && <DeleteModal product={pendingDelete} busy={isDeleting(pendingDelete._id)} error={getMutationError(pendingDelete._id)} onCancel={cancelDelete} onConfirm={confirmDelete} />}
     </div>
   );
 }
 
 export function SellerListRoute() {
-  const { products, requestDelete } = useOutletContext();
+  const { products, loading, requestDelete } = useOutletContext();
   const navigate = useNavigate();
-  return (
-    <SellerProducts
-      products={products}
-      onAdd={() => navigate("/seller/new")}
-      onEdit={(p) => navigate(`/seller/${p._id}/edit`)}
-      onDelete={(p) => requestDelete(p)}
-    />
-  );
+  return <SellerProducts products={products} loading={loading} onAdd={() => navigate("/seller/new")}
+    onEdit={(product) => navigate("/seller/" + product._id + "/edit")} onDelete={requestDelete} />;
 }
 
 export function SellerNewRoute() {
-  const { addProduct } = useOutletContext();
+  const { createProduct, setNotice } = useOutletContext();
   const navigate = useNavigate();
-  return (
-    <ProductForm
-      submitLabel="Publish product"
-      onSubmit={(values) => {
-        addProduct(values);
-        navigate("/seller");
-      }}
-      onCancel={() => navigate("/seller")}
-    />
-  );
+  const handleSubmit = async (values) => {
+    const variant = values.variants[0];
+    const result = await createProduct({
+      title: values.title, description: values.description, priceCurrency: values.currency,
+      priceAmount: Number(variant.price), stockAmount: Number(variant.stock),
+      size: variant.size, color: variant.color, images: values.images,
+    });
+    if (result.ok) {
+      setNotice("Product published.");
+      navigate("/seller");
+    }
+    return result;
+  };
+  return <ProductForm onSubmit={handleSubmit} onCancel={() => navigate("/seller")} />;
 }
 
 export function SellerEditRoute() {
   const { id } = useParams();
-  const { products, updateProduct } = useOutletContext();
+  const { products, loading, renameTitle, changeDescription, changePrice, replaceImages, setNotice } = useOutletContext();
   const navigate = useNavigate();
-  const product = products.find((p) => p._id === id);
+  const product = products.find((item) => item._id === id);
 
-  if (!product) {
-    return (
-      <div className="mx-auto w-full max-w-[720px] px-5 py-20 text-center sm:px-8">
-        <p className="font-serif text-3xl font-light">Product not found.</p>
-        <p className="mt-2 text-[14px] leading-6 text-neutral-500">
-          It may have been deleted.
-        </p>
-        <Link
-          to="/seller"
-          className="mt-6 inline-flex h-12 items-center bg-black px-6 text-[12px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-neutral-800"
-        >
-          Back to products
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <ProductForm
-      key={product._id}
-      initialValues={toInitialValues(product)}
-      submitLabel="Save changes"
-      onSubmit={(values) => {
-        updateProduct(product._id, values);
-        navigate("/seller");
-      }}
-      onCancel={() => navigate("/seller")}
-    />
+  if (loading) return <p role="status" className="px-5 py-10 text-sm text-neutral-600">Loading product…</p>;
+  if (!product) return (
+    <div className="mx-auto max-w-[760px] px-5 py-10 sm:px-8">
+      <h1 className="text-2xl font-semibold">Product not found</h1>
+      <p className="mt-2 text-sm text-neutral-600">It may have been deleted or belong to another seller.</p>
+      <Link to="/seller" className="mt-6 inline-flex min-h-11 items-center text-sm underline">Back to products</Link>
+    </div>
   );
-}
 
+  const handleSubmit = async (values) => {
+    // Each endpoint saves independently. Keep the latest successful response in
+    // the store so retries only send changes that have not already been saved.
+    const updates = [];
+    if (values.title !== product.title) updates.push(() => renameTitle(id, values.title));
+    if (values.description !== product.description) updates.push(() => changeDescription(id, values.description));
+    values.variants.forEach((variant, index) => {
+      if (Number(variant.price) !== product.verient[index]?.price?.basePrice) {
+        updates.push(() => changePrice(id, Number(variant.price), index));
+      }
+    });
+    if (values.images.length) updates.push(() => replaceImages(id, values.images));
+    let saved = 0;
+    for (const update of updates) {
+      const result = await update();
+      if (!result.ok) return {
+        ok: false,
+        error: (saved ? "Some changes were saved. " : "") + result.error + " Your remaining edits are still here. Try saving again.",
+      };
+      saved += 1;
+    }
+    setNotice(updates.length ? "Product updated." : "No changes to save.");
+    navigate("/seller");
+    return { ok: true };
+  };
+
+  return <ProductForm key={product._id} initialValues={toInitialValues(product)} onSubmit={handleSubmit} onCancel={() => navigate("/seller")} />;
+}
