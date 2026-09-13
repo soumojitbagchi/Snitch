@@ -137,12 +137,37 @@ const getMe= async (req,res)=>{
   });
 }
 
-export { signinController, signupController, googleVerifyCallback, googleCallbackController, getMe };
+const updateRoleController = async (req, res) => {
+  const { role } = req.body;
+  if (role !== "seller") {
+    return res.status(400).json({
+      success: false,
+      error: "Only upgrade to 'seller' is allowed.",
+    });
+  }
+  if (req.user.role === "seller") {
+    return res.status(200).json({
+      success: true,
+      message: "Already a seller.",
+      user: req.user,
+    });
+  }
+  req.user.role = "seller";
+  await req.user.save();
+  return res.status(200).json({
+    success: true,
+    message: "Store opened. You are now a seller.",
+    user: req.user,
+  });
+};
+
+export { signinController, signupController, googleVerifyCallback, googleCallbackController, getMe, updateRoleController };
 
 export default {
   signinController,
   signupController,
   googleVerifyCallback,
   googleCallbackController,
-  getMe
+  getMe,
+  updateRoleController
 };

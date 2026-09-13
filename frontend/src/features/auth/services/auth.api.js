@@ -14,3 +14,8 @@ export const signup = async ({ email, password, fullname, contact, role}) => {
   const response = await api.post("/signup", { email, password ,fullname,contact,role});
   return response.data;
 };
+
+export const becomeSeller = async () => {
+  const response = await api.patch("/role", { role: "seller" });
+  return response.data;
+};
