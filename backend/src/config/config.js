@@ -37,6 +37,12 @@ if(!process.env.GOOGLE_AUTH_CLIENT_ID){
 if(!process.env.IMAGEKIT_PRIVATE_KEY){
     throw new Error("imagekit private key isnt defined")
 }
+if(!process.env.RAZORPAY_KEY_ID){
+    throw new Error("razorpay key id isnt defined")
+}
+if(!process.env.RAZORPAY_KEY_SECRET){
+    throw new Error("razorpay key secret isnt defined")
+}
 
 export const config={
     MONGO_URI:process.env.MONGO_URI,
@@ -45,5 +51,7 @@ export const config={
     CLIENT_URL:process.env.CLIENT_URL,
     GOOGLE_AUTH_CLIENT_ID:process.env.GOOGLE_AUTH_CLIENT_ID,
     GOOGLE_AUTH_SECRET_KEY:process.env.GOOGLE_AUTH_SECRET_KEY,
-    IMAGEKIT_PRIVATE_KEY:process.env.IMAGEKIT_PRIVATE_KEY
+    IMAGEKIT_PRIVATE_KEY:process.env.IMAGEKIT_PRIVATE_KEY,
+    RAZORPAY_KEY_ID:process.env.RAZORPAY_KEY_ID,
+    RAZORPAY_KEY_SECRET:process.env.RAZORPAY_KEY_SECRET
 }

@@ -1,5 +1,15 @@
 import { Router } from "express";
-import { createProduct , updateProductImage, updatePriceInfo, updateTitle, updateDescription, allProducts, allProductsBySeller, deleteProduct } from "../controller/product.controller.js";
+import {
+    createProduct,
+    updateProductImage,
+    updatePriceInfo,
+    updateTitle,
+    updateDescription,
+    allProducts,
+    allProductsBySeller,
+    deleteProduct,
+    detailsProduct,
+} from "../controller/product.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import multer from 'multer'
 
@@ -8,21 +18,16 @@ const productRouter = Router();
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed!'));
-        }
-    }
+
 })
 
 
 productRouter.post("/create", authMiddleware, upload.array('images', 5), createProduct);
-productRouter.put("/update-image/:id", authMiddleware, upload.array('images',5), updateProductImage);
+productRouter.put("/update-image/:id", authMiddleware, upload.array('images', 5), updateProductImage);
 productRouter.put("/update-price/:id", authMiddleware, upload.none(), updatePriceInfo);
 productRouter.put("/update-title/:id", authMiddleware, upload.none(), updateTitle);
 productRouter.put("/update-description/:id", authMiddleware, upload.none(), updateDescription);
+productRouter.get("/details/:productId", authMiddleware, detailsProduct);
 productRouter.delete("/:id", authMiddleware, deleteProduct);
 productRouter.get("/all", authMiddleware, allProducts);
 productRouter.get("/all-by-seller", authMiddleware, allProductsBySeller);

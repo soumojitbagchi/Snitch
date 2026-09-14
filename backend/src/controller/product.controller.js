@@ -149,3 +149,24 @@ export const deleteProduct = async (req, res) => {
         res.status(500).json({ message: error.message, success: false });
     }
 };
+export const detailsProduct = async (req, res) => {
+    try {
+        const details = await Product.findById(req.params.productId);
+
+        if (!details) {
+            return res.status(404).json({ message: "Product not found", success: false });
+        }
+
+        return res.status(200).json({
+            message: "Product details fetched successfully",
+            data: details,
+            success: true,
+        });
+    } catch (error) {
+        if (error?.name === "CastError") {
+            return res.status(404).json({ message: "Product not found", success: false });
+        }
+
+        return res.status(500).json({ message: error.message, success: false });
+    }
+};
