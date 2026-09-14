@@ -1,29 +1,19 @@
 import { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { productError } from "../utils/product";
-
 import {
   selectProducts,
   selectProductLoading,
-  selectProductCreating,
-  selectProductUpdating,
-  selectProductDeleting,
   selectProductError,
-  selectProductMutationErrors,
   selectProductSuccess,
   setProducts,
   setLoading,
-  setCreating,
-  setUpdating,
-  setDeleting,
   setError,
-  setMutationError,
   setSuccess,
   upsertProduct,
   removeProduct,
   clearProductStatus,
 } from "../../redux/product.slice";
-
 import {
   fetchMyProducts,
   createProduct as createProductApi,
@@ -32,26 +22,20 @@ import {
   editPrice as editPriceApi,
   updateProductImage as updateProductImageApi,
   deleteProduct as deleteProductApi,
+  productData as productDataApi,
 } from "../services/product.api";
-
-const messageOf = productError;
-
-const getProductFromResponse = (response) =>
-  response?.data ?? response?.product ?? null;
 
 export const useProduct = () => {
   const dispatch = useDispatch();
 
   const products = useSelector(selectProducts);
   const loading = useSelector(selectProductLoading);
-  const creating = useSelector(selectProductCreating);
-  const updating = useSelector(selectProductUpdating);
-  const deleting = useSelector(selectProductDeleting);
   const error = useSelector(selectProductError);
-  const mutationErrors = useSelector(selectProductMutationErrors);
   const success = useSelector(selectProductSuccess);
 
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [busyIds, setBusyIds] = useState({});
+  const [itemErrors, setItemErrors] = useState({});
 
   const fetchProducts = useCallback(async (signal) => {
     dispatch(setLoading(true));
@@ -62,221 +46,129 @@ export const useProduct = () => {
       if (signal?.aborted) return { ok: false };
 
       const fetchedProducts = response?.data;
-
       if (!Array.isArray(fetchedProducts)) {
         throw new Error("Invalid products response.");
       }
 
       dispatch(setProducts(fetchedProducts));
-
-      return {
-        ok: true,
-        products: fetchedProducts,
-      };
+      return { ok: true, products: fetchedProducts };
     } catch (err) {
       if (signal?.aborted) return { ok: false };
-      const message = messageOf(err, "Failed to load products.");
-
+      const message = productError(err, "Failed to load products.");
       dispatch(setError(message));
-
-      return {
-        ok: false,
-        error: message,
-      };
+      return { ok: false, error: message };
     } finally {
       if (!signal?.aborted) dispatch(setLoading(false));
     }
   }, [dispatch]);
 
-  const createProduct = useCallback(
-    async (values) => {
-      dispatch(setCreating(true));
-      dispatch(setError(null));
-      dispatch(setSuccess(null));
+  const createProduct = useCallback(async (values) => {
+    dispatch(setLoading(true));
+    dispatch(setError(null));
+    dispatch(setSuccess(null));
 
-      try {
-        const response = await createProductApi(values);
+    try {
+      const response = await createProductApi(values);
+      const product = response?.data ?? response?.product;
 
-        const product = getProductFromResponse(response);
-
-        if (!product) {
-          throw new Error("Invalid product response.");
-        }
-
-        dispatch(upsertProduct(product));
-
-        dispatch(
-          setSuccess(
-            response?.message ?? "Product created successfully."
-          )
-        );
-
-        return {
-          ok: true,
-          product,
-        };
-      } catch (err) {
-        const message = messageOf(err, "Failed to create product.");
-
-        return {
-          ok: false,
-          error: message,
-        };
-      } finally {
-        dispatch(setCreating(false));
+      if (!product) {
+        throw new Error("Invalid product response.");
       }
-    },
-    [dispatch]
-  );
 
-  const updateProduct = useCallback(
-    async (productId, apiCall, fallbackMessage) => {
-      dispatch(
-        setUpdating({
-          productId,
-          value: true,
-        })
-      );
+      dispatch(upsertProduct(product));
+      dispatch(setSuccess(response?.message ?? "Product created successfully."));
+      return { ok: true, product };
+    } catch (err) {
+      const message = productError(err, "Failed to create product.");
+      dispatch(setError(message));
+      return { ok: false, error: message };
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch]);
 
-      dispatch(
-        setMutationError({
-          productId,
-          error: null,
-        })
-      );
+  const updateProduct = useCallback(async (productId, apiCall, fallbackMessage) => {
+    setBusyIds((prev) => ({ ...prev, [productId]: true }));
+    setItemErrors((prev) => ({ ...prev, [productId]: null }));
 
-      try {
-        const response = await apiCall();
+    try {
+      const response = await apiCall();
+      const product = response?.data ?? response?.product;
 
-        const product = getProductFromResponse(response);
-
-        if (!product) {
-          throw new Error("Invalid updated product response.");
-        }
-
-        dispatch(upsertProduct(product));
-
-        return {
-          ok: true,
-          product,
-        };
-      } catch (err) {
-        const message = messageOf(err, fallbackMessage);
-
-        dispatch(
-          setMutationError({
-            productId,
-            error: message,
-          })
-        );
-
-        return {
-          ok: false,
-          error: message,
-        };
-      } finally {
-        dispatch(
-          setUpdating({
-            productId,
-            value: false,
-          })
-        );
+      if (!product) {
+        throw new Error("Invalid updated product response.");
       }
-    },
-    [dispatch]
-  );
+
+      dispatch(upsertProduct(product));
+      return { ok: true, product };
+    } catch (err) {
+      const message = productError(err, fallbackMessage);
+      setItemErrors((prev) => ({ ...prev, [productId]: message }));
+      return { ok: false, error: message };
+    } finally {
+      setBusyIds((prev) => {
+        const copy = { ...prev };
+        delete copy[productId];
+        return copy;
+      });
+    }
+  }, [dispatch]);
 
   const renameTitle = useCallback(
     (productId, title) =>
-      updateProduct(
-        productId,
-        () => editTitleApi(productId, title),
-        "Failed to update title."
-      ),
+      updateProduct(productId, () => editTitleApi(productId, title), "Failed to update title."),
     [updateProduct]
   );
 
   const changeDescription = useCallback(
     (productId, description) =>
-      updateProduct(
-        productId,
-        () => editDescriptionApi(productId, description),
-        "Failed to update description."
-      ),
+      updateProduct(productId, () => editDescriptionApi(productId, description), "Failed to update description."),
     [updateProduct]
   );
 
   const changePrice = useCallback(
     (productId, priceAmount, variantIndex = 0) =>
-      updateProduct(
-        productId,
-        () => editPriceApi(productId, priceAmount, variantIndex),
-        "Failed to update price."
-      ),
+      updateProduct(productId, () => editPriceApi(productId, priceAmount, variantIndex), "Failed to update price."),
     [updateProduct]
   );
 
   const replaceImages = useCallback(
     (productId, images) =>
-      updateProduct(
-        productId,
-        () => updateProductImageApi(productId, images),
-        "Failed to update images."
-      ),
+      updateProduct(productId, () => updateProductImageApi(productId, images), "Failed to update images."),
     [updateProduct]
   );
 
-  const deleteProduct = useCallback(
-    async (productId) => {
-      dispatch(
-        setDeleting({
-          productId,
-          value: true,
-        })
-      );
+  const deleteProduct = useCallback(async (productId) => {
+    setBusyIds((prev) => ({ ...prev, [productId]: true }));
+    setItemErrors((prev) => ({ ...prev, [productId]: null }));
 
-      dispatch(
-        setMutationError({
-          productId,
-          error: null,
-        })
-      );
+    try {
+      await deleteProductApi(productId);
+      dispatch(removeProduct(productId));
+      setPendingDelete(null);
+      return { ok: true };
+    } catch (err) {
+      const message = productError(err, "Failed to delete product.");
+      setItemErrors((prev) => ({ ...prev, [productId]: message }));
+      return { ok: false, error: message };
+    } finally {
+      setBusyIds((prev) => {
+        const copy = { ...prev };
+        delete copy[productId];
+        return copy;
+      });
+    }
+  }, [dispatch]);
 
-      try {
-        await deleteProductApi(productId);
-
-        dispatch(removeProduct(productId));
-
-        setPendingDelete(null);
-
-        return {
-          ok: true,
-        };
-      } catch (err) {
-        const message = messageOf(err, "Failed to delete product.");
-
-        dispatch(
-          setMutationError({
-            productId,
-            error: message,
-          })
-        );
-
-        return {
-          ok: false,
-          error: message,
-        };
-      } finally {
-        dispatch(
-          setDeleting({
-            productId,
-            value: false,
-          })
-        );
-      }
-    },
-    [dispatch]
-  );
+  const getProductData = useCallback(async (productId, signal) => {
+    try {
+      const response = await productDataApi(productId, signal);
+      return response;
+    } catch (err) {
+      const message = productError(err, "Failed to get product data.");
+      return { ok: false, error: message };
+    }
+  }, []);
 
   const requestDelete = useCallback((product) => {
     setPendingDelete(product);
@@ -291,28 +183,24 @@ export const useProduct = () => {
   }, [dispatch]);
 
   const isUpdating = useCallback(
-    (productId) => Boolean(updating[productId]),
-    [updating]
+    (productId) => Boolean(busyIds[productId]),
+    [busyIds]
   );
 
   const isDeleting = useCallback(
-    (productId) => Boolean(deleting[productId]),
-    [deleting]
+    (productId) => Boolean(busyIds[productId]),
+    [busyIds]
   );
 
   const getMutationError = useCallback(
-    (productId) => mutationErrors[productId] ?? null,
-    [mutationErrors]
+    (productId) => itemErrors[productId] ?? null,
+    [itemErrors]
   );
 
   return {
     products,
     loading,
-    creating,
-    updating,
-    deleting,
     error,
-    mutationErrors,
     success,
     pendingDelete,
 
@@ -323,6 +211,7 @@ export const useProduct = () => {
     changePrice,
     replaceImages,
     deleteProduct,
+    getProductData,
 
     requestDelete,
     cancelDelete,
