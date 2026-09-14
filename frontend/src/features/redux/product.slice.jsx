@@ -2,20 +2,15 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   products: [],
+  selectedProduct: null,
   loading: false,
-  creating: false,
-  updating: {},
-  deleting: {},
   error: null,
-  mutationErrors: {},
   success: null,
 };
 
 const productSlice = createSlice({
   name: "product",
-
   initialState,
-
   reducers: {
     setProducts: (state, action) => {
       state.products = action.payload ?? [];
@@ -23,13 +18,9 @@ const productSlice = createSlice({
 
     upsertProduct: (state, action) => {
       const product = action.payload;
-
       if (!product?._id) return;
 
-      const index = state.products.findIndex(
-        (item) => item._id === product._id
-      );
-
+      const index = state.products.findIndex((item) => item._id === product._id);
       if (index === -1) {
         state.products.unshift(product);
       } else {
@@ -38,53 +29,19 @@ const productSlice = createSlice({
     },
 
     removeProduct: (state, action) => {
-      const productId = action.payload;
+      state.products = state.products.filter((item) => item._id !== action.payload);
+    },
 
-      state.products = state.products.filter(
-        (product) => product._id !== productId
-      );
+    setSelectedProduct: (state, action) => {
+      state.selectedProduct = action.payload ?? null;
     },
 
     setLoading: (state, action) => {
-      state.loading = action.payload;
-    },
-
-    setCreating: (state, action) => {
-      state.creating = action.payload;
-    },
-
-    setUpdating: (state, action) => {
-      const { productId, value } = action.payload;
-
-      if (value) {
-        state.updating[productId] = true;
-      } else {
-        delete state.updating[productId];
-      }
-    },
-
-    setDeleting: (state, action) => {
-      const { productId, value } = action.payload;
-
-      if (value) {
-        state.deleting[productId] = true;
-      } else {
-        delete state.deleting[productId];
-      }
+      state.loading = Boolean(action.payload);
     },
 
     setError: (state, action) => {
       state.error = action.payload ?? null;
-    },
-
-    setMutationError: (state, action) => {
-      const { productId, error } = action.payload;
-
-      if (error) {
-        state.mutationErrors[productId] = error;
-      } else {
-        delete state.mutationErrors[productId];
-      }
     },
 
     setSuccess: (state, action) => {
@@ -94,8 +51,15 @@ const productSlice = createSlice({
     clearProductStatus: (state) => {
       state.error = null;
       state.success = null;
-      state.mutationErrors = {};
     },
+
+    setCreating: (state, action) => {
+      state.loading = Boolean(action.payload);
+    },
+
+    setUpdating: () => {},
+    setDeleting: () => {},
+    setMutationError: () => {},
   },
 });
 
@@ -103,24 +67,26 @@ export const {
   setProducts,
   upsertProduct,
   removeProduct,
+  setSelectedProduct,
   setLoading,
+  setError,
+  setSuccess,
+  clearProductStatus,
   setCreating,
   setUpdating,
   setDeleting,
-  setError,
   setMutationError,
-  setSuccess,
-  clearProductStatus,
 } = productSlice.actions;
 
 export const selectProducts = (state) => state.product.products;
+export const selectProduct = (state) => state.product.selectedProduct;
 export const selectProductLoading = (state) => state.product.loading;
-export const selectProductCreating = (state) => state.product.creating;
-export const selectProductUpdating = (state) => state.product.updating;
-export const selectProductDeleting = (state) => state.product.deleting;
 export const selectProductError = (state) => state.product.error;
-export const selectProductMutationErrors = (state) =>
-  state.product.mutationErrors;
 export const selectProductSuccess = (state) => state.product.success;
+
+export const selectProductCreating = (state) => state.product.loading;
+export const selectProductUpdating = () => ({});
+export const selectProductDeleting = () => ({});
+export const selectProductMutationErrors = () => ({});
 
 export default productSlice.reducer;
