@@ -20,14 +20,55 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    // type in an input
+    setUser: (state, action) => {
+      state.user = action.payload;
+    },
+    setToken: (state, action) => {
+      state.token = action.payload;
+    },
+    setValues: (state, action) => {
+      state.values = action.payload;
+    },
+    setField: (state, action) => {
+      const { key, value } = action.payload;
+      state.values[key] =
+        key === "contact"
+          ? String(value ?? "").replace(/\D/g, "").slice(0, 10)
+          : value;
+      if (state.errors[key]) {
+        delete state.errors[key];
+      }
+      state.serverError = "";
+    },
+    setRole: (state, action) => {
+      state.values.role = action.payload;
+    },
+    setErrors: (state, action) => {
+      state.errors = action.payload ?? {};
+    },
+    setServerError: (state, action) => {
+      state.serverError = action.payload ?? "";
+    },
+    setShowPassword: (state, action) => {
+      state.showPassword =
+        action.payload !== undefined ? action.payload : !state.showPassword;
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    },
+    setDone: (state, action) => {
+      state.done = action.payload;
+    },
+
     field: (state, action) => {
       const { key, value } = action.payload;
       state.values[key] =
         key === "contact"
           ? String(value ?? "").replace(/\D/g, "").slice(0, 10)
           : value;
-      delete state.errors[key];
+      if (state.errors[key]) {
+        delete state.errors[key];
+      }
       state.serverError = "";
     },
     role: (state, action) => {
@@ -36,7 +77,6 @@ const authSlice = createSlice({
     togglePassword: (state) => {
       state.showPassword = !state.showPassword;
     },
-    // internal: request lifecycle (hook uses these, you don't have to)
     start: (state) => {
       state.loading = true;
       state.serverError = "";
@@ -73,7 +113,26 @@ const authSlice = createSlice({
   },
 });
 
-export const { field, role, togglePassword, start, fail, success, reset, logout } =
-  authSlice.actions;
+export const {
+  setUser,
+  setToken,
+  setValues,
+  setField,
+  setRole,
+  setErrors,
+  setServerError,
+  setShowPassword,
+  setLoading,
+  setDone,
+  field,
+  role,
+  togglePassword,
+  start,
+  fail,
+  success,
+  reset,
+  logout,
+} = authSlice.actions;
+
 export const selectAuth = (state) => state.auth;
 export default authSlice.reducer;
