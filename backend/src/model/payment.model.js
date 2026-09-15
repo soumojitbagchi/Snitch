@@ -4,7 +4,7 @@ const paymentSchema = mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'user',
-        required: true
+        required: false
     },
     amount: {
         type: Number,
@@ -16,11 +16,16 @@ const paymentSchema = mongoose.Schema({
     },
     currency: {
         type: String,
-        required: true
+        required: true,
+        default: 'INR'
     },
     paymentId: {
         type: String,
-        required: true
+        default: ''
+    },
+    signature: {
+        type: String,
+        default: ''
     },
     paymentStatus: {
         type: String,
