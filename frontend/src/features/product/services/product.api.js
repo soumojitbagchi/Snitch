@@ -5,8 +5,10 @@ const api = axios.create({
     withCredentials: true,
 })
 
-export const fetchAllProducts = async (signal) => {
-    const response = await api.get('/all', { signal });
+export const fetchAllProducts = async () => {
+    const response = await api.get('/all');
+    console.log(response);
+
     return response.data;
 }
 
@@ -53,5 +55,10 @@ export const updateProductImage = async (productId, images) => {
 
 export const deleteProduct = async (productId) => {
     const response = await api.delete(`/${productId}`);
+    return response.data;
+}
+
+export const productData = async (productId, signal) => {
+    const response = await api.get(`/details/${productId}`, { signal });
     return response.data;
 }
