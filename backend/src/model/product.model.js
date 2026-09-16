@@ -35,7 +35,10 @@ const productSchema = mongoose.Schema({
                 type: priceSchema
             },
             stock: {
-                type: priceSchema
+                type: Number,
+                required: true,
+                default: 0,
+                min: 0,
             },
             attributes: {
                 type: Map,
