@@ -2,4 +2,7 @@ node_modules
 .env
 frontend/src/routes.jsx
 work.txt
-FRONTEND_STRUCTURE.md
+*.md
+*.example
+*.spec.js
+*.spec.jsx

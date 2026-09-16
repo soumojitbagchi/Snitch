@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import { config } from "../config/config.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import { warn } from "console";
 
 const issueToken = (user) => {
   return jwt.sign(

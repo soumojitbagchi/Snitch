@@ -8,6 +8,7 @@ const validateRequest = async (req, res, next) => {
             success: false
         })
     }
+    next();
 }
 
 const validSearch = [

@@ -26,14 +26,12 @@ export const createProduct = async (req, res) => {
                         basePrice: Number(priceAmount) || 0,
                         currency: priceCurrency || "INR",
                     },
-                    stock: {
-                        basePrice: Number(stockAmount) || 0,
-                        currency: priceCurrency || "INR",
-                    },
+                    stock: Number(stockAmount) || 0,
                     attributes: {
                         ...(size ? { size } : {}),
                         ...(color ? { color } : {}),
                     },
+
                 },
             ],
             seller,
@@ -170,8 +168,8 @@ export const detailsProduct = async (req, res) => {
         return res.status(500).json({ message: error.message, success: false });
     }
 };
-export const searchProduct = async (req,res)=>{
-    const {query} = req.query;
+export const searchProduct = async (req, res) => {
+    const { query } = req.query;
     try {
         const data = await Product.find({ name: { $regex: query, $options: "i" } });
         return res.status(200).json({ message: "Products fetched successfully", data, success: true });
