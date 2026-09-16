@@ -1,41 +1,45 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import ShopGrid from "./ShopGrid";
-import { fetchAllProducts } from "../services/product.api";
+import Navbar from "../../../components/Navbar";
+import { useProduct } from "../hooks/useProduct";
 import { productError } from "../utils/product";
+import { useEffect } from "react";
 
 function Home() {
-  const [catalog, setCatalog] = useState({ products: [], loading: true, error: "" });
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchAllProducts(controller.signal).then((response) => {
-      if (!Array.isArray(response?.data)) throw new Error("Invalid products response.");
-      if (!controller.signal.aborted) setCatalog({ products: response.data, loading: false, error: "" });
-    }).catch((error) => {
-      if (!controller.signal.aborted) setCatalog({ products: [], loading: false, error: productError(error, "Products could not be loaded. Please try again.") });
-    });
-    return () => controller.abort();
-  }, [attempt]);
 
+  const { products, error, loading, fetchProducts } = useProduct();
+  useEffect(() => {
+    fetchProducts();
+    console.log(products.length === 0 ? "empty" : products)
+  }, [])
   return (
-    <div className="flex min-h-screen flex-col bg-white text-neutral-900">
-      <header className="border-b border-neutral-200">
-        <div className="mx-auto flex min-h-16 max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 sm:px-8">
-          <Link to="/" className="text-lg font-bold uppercase tracking-[0.2em]">Snitch</Link>
-          <nav aria-label="Store" className="flex gap-4 text-sm">
-            <Link to="/seller" className="inline-flex min-h-11 items-center hover:underline">My products</Link>
-            <Link to="/signin" className="inline-flex min-h-11 items-center hover:underline">Sign in</Link>
-          </nav>
-        </div>
-      </header>
+    <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
+      <Navbar />
+
       <main className="flex-1">
-        <ShopGrid {...catalog} onRetry={() => {
-          setCatalog({ products: [], loading: true, error: "" });
-          setAttempt((value) => value + 1);
-        }} />
+        <div className="mx-auto w-full max-w-[1400px] px-5 pt-10 sm:px-8 sm:pt-14">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">
+            The latest drop
+          </p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-600 sm:text-[15px]">
+            Everyday pieces, made to be worn on repeat.
+          </p>
+        </div>
+        <ShopGrid
+          products={products}
+          loading={loading}
+          error={error}
+          onRetry={() => { }} // create condition
+        />
       </main>
-      <footer className="border-t border-neutral-200 px-5 py-6 text-sm text-neutral-600 sm:px-8">Snitch</footer>
+
+      <footer className="mt-8 border-t border-neutral-200">
+        <div className="mx-auto flex min-h-16 w-full max-w-[1400px] items-center justify-between gap-4 px-5 text-sm text-neutral-600 sm:px-8">
+          <span>Snitch</span>
+          <span className="text-xs uppercase tracking-[0.14em]">
+            Menswear, simplified
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }

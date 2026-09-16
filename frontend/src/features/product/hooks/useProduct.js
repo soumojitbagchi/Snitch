@@ -23,6 +23,7 @@ import {
   updateProductImage as updateProductImageApi,
   deleteProduct as deleteProductApi,
   productData as productDataApi,
+  fetchAllProducts as fetchAllProductsApi
 } from "../services/product.api";
 
 export const useProduct = () => {
@@ -37,13 +38,14 @@ export const useProduct = () => {
   const [busyIds, setBusyIds] = useState({});
   const [itemErrors, setItemErrors] = useState({});
 
-  const fetchProducts = useCallback(async (signal) => {
+  const fetchProducts = useCallback(async () => {
     dispatch(setLoading(true));
     dispatch(setError(null));
 
     try {
-      const response = await fetchMyProducts(signal);
-      if (signal?.aborted) return { ok: false };
+      const response = await fetchAllProductsApi();
+      console.log(response);
+
 
       const fetchedProducts = response?.data;
       if (!Array.isArray(fetchedProducts)) {
@@ -53,14 +55,13 @@ export const useProduct = () => {
       dispatch(setProducts(fetchedProducts));
       return { ok: true, products: fetchedProducts };
     } catch (err) {
-      if (signal?.aborted) return { ok: false };
       const message = productError(err, "Failed to load products.");
       dispatch(setError(message));
       return { ok: false, error: message };
     } finally {
-      if (!signal?.aborted) dispatch(setLoading(false));
+      dispatch(setLoading(false));
     }
-  }, [dispatch]);
+  }, []);
 
   const createProduct = useCallback(async (values) => {
     dispatch(setLoading(true));
