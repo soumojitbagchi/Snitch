@@ -13,7 +13,6 @@ const issueToken = (user) => {
       email: user.email,
     },
     config.JWT_KEY,
-    { expiresIn: "6h" },
   );
 };
 
@@ -45,13 +44,13 @@ const signinController = async (req, res) => {
   }
   const token = issueToken(isUserExists);
   setTokenCookie(res, token);
-  res.status(200).json({ token, success: true ,user:isUserExists });
+  res.status(200).json({ token, success: true, user: isUserExists });
 };
 
 const signupController = async (req, res) => {
   const { email, password, fullname, contact, role } = req.body;
   const isUserExists = await userData.findOne({ email });
-  const hash = await bcrypt.hash(password,10)
+  const hash = await bcrypt.hash(password, 10)
   if (isUserExists) {
     return res.status(409).json({
       success: false,
@@ -60,7 +59,7 @@ const signupController = async (req, res) => {
   }
   const user = await userData.create({
     email,
-    password:hash,
+    password: hash,
     contact,
     role,
     fullname,
@@ -124,11 +123,11 @@ const googleCallbackController = async (req, res) => {
   return res.redirect(`${config.CLIENT_URL}/auth/success?token=${token}`);
 };
 
-const getMe= async (req,res)=>{
+const getMe = async (req, res) => {
   const user = req.client;
-  if(!user){
+  if (!user) {
     return res.status(401).json({
-      warn:"User not found",
+      warn: "User not found",
     })
   }
   return res.status(200).json({
