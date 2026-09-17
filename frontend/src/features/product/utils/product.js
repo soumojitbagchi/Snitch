@@ -44,7 +44,7 @@ export const sizeList = (product) => {
 
 export const productError = (error, fallback) => {
   if (error?.response?.status === 401 || error?.response?.status === 403) {
-    return "A signed-in seller account is required to access products. Please sign in as a seller and try again.";
+    return "A signed-in account is required to access . Please sign in and try again.";
   }
   const message = error?.response?.data?.message || error?.response?.data?.error;
   return typeof message === "string" ? message : fallback;

@@ -31,7 +31,7 @@ productRouter.put("/update-title/:id", authMiddleware, upload.none(), updateTitl
 productRouter.put("/update-description/:id", authMiddleware, upload.none(), updateDescription);
 productRouter.get("/details/:productId", authenticate, detailsProduct);
 productRouter.delete("/:id", authMiddleware, deleteProduct);
-productRouter.get("/all", authenticate, allProducts);
+productRouter.get("/all", allProducts);
 productRouter.get("/all-by-seller", authMiddleware, allProductsBySeller);
 productRouter.get("/search", productValidator.validSearch, authenticate, searchProduct);
 
