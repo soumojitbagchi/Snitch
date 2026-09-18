@@ -1,9 +1,14 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import useProductDetails from "../hooks/useProductDetails";
 import ProductDetails from "./ProductDetails";
 import ProductDetailsSkeleton from "./ProductDetailsSkeleton";
+import { selectCartCount, setCart } from "../../redux/cart.slice";
+import { addProductToCart } from "../../cart/services/cart.api";
 
 function StoreHeader() {
+  const cartCount = useSelector(selectCartCount);
+
   return (
     <header className="border-b border-neutral-200">
       <div className="mx-auto flex min-h-16 w-full max-w-[1400px] items-center justify-between gap-5 px-5 sm:px-8">
@@ -13,12 +18,25 @@ function StoreHeader() {
         >
           Snitch
         </Link>
-        <Link
-          to="/"
-          className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-neutral-700 underline underline-offset-4 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-        >
-          All products
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link
+            to="/"
+            className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-neutral-700 underline underline-offset-4 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+          >
+            All products
+          </Link>
+          <Link
+            to="/cart"
+            className="inline-flex min-h-11 items-center gap-1.5 px-2 text-sm font-medium text-neutral-900 transition-colors hover:text-neutral-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+          >
+            <span>Cart</span>
+            {cartCount > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center bg-black px-1 text-[9px] font-bold text-white">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+        </div>
       </div>
     </header>
   );
@@ -61,7 +79,20 @@ function ProductError({ error, onRetry }) {
 
 export default function ProductDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { product, loading, error, retry } = useProductDetails(id);
+
+  const handleAddToCart = async ({ productId, variantId, quantity }) => {
+    const response = await addProductToCart(productId, variantId, quantity);
+    if (response.success && response.cart) dispatch(setCart(response.cart));
+  };
+
+  const handleBuyNow = ({ product, variant, quantity }) => {
+    navigate("/buy-now", {
+      state: { product , variant, quantity },
+    });
+  };
 
   return (
     <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
@@ -81,7 +112,13 @@ export default function ProductDetailsPage() {
                 Back to products
               </Link>
             </div>
-            <ProductDetails key={product._id} product={product} className="pt-2" />
+            <ProductDetails
+              key={product._id}
+              product={product}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              className="pt-2"
+            />
           </>
         )}
       </main>

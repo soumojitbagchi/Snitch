@@ -514,7 +514,7 @@ export default function ProductDetails({
   const product = initialProduct || mockProducts[0];
 
   const variants = useMemo(() => {
-    return product?.verient || product?.variants || [];
+    return product?.variant || product?.variants || [];
   }, [product]);
 
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
@@ -556,8 +556,8 @@ export default function ProductDetails({
 
     if (onAddToCart) {
       onAddToCart({
-        product,
-        variant: activeVariant,
+        productId: product._id,
+        variantId: activeVariant._id,
         quantity,
       });
     }
@@ -567,7 +567,7 @@ export default function ProductDetails({
     if (isOutOfStock) return;
     if (onBuyNow) {
       onBuyNow({
-        product,
+        product: product,
         variant: activeVariant,
         quantity,
       });

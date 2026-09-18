@@ -14,9 +14,9 @@ import { useProduct } from "../hooks/useProduct";
 const toInitialValues = (product) => ({
   title: product.title,
   description: product.description,
-  currency: product.verient?.[0]?.price?.currency ?? "INR",
+  currency: product.variant?.[0]?.price?.currency ?? "INR",
   images: (product.images ?? []).map((image) => image.url),
-  variants: (product.verient ?? []).map((variant) => ({
+  variants: (product.variant ?? []).map((variant) => ({
     size: variant.attributes?.size ?? "",
     color: variant.attributes?.color ?? "",
     price:
@@ -353,7 +353,7 @@ export function SellerEditRoute() {
       updates.push(() => changeDescription(id, values.description));
     }
     values.variants.forEach((variant, index) => {
-      if (Number(variant.price) !== product.verient[index]?.price?.basePrice) {
+      if (Number(variant.price) !== product.variant[index]?.price?.basePrice) {
         updates.push(() => changePrice(id, Number(variant.price), index));
       }
     });

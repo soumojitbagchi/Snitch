@@ -217,8 +217,8 @@ export default function SellerProducts({
                     {product.title}
                   </p>
                   <p className="mt-1 text-sm text-neutral-600">
-                    {(product.verient ?? []).length} variant
-                    {(product.verient ?? []).length === 1 ? "" : "s"}
+                    {(product.variant ?? []).length} variant
+                    {(product.variant ?? []).length === 1 ? "" : "s"}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 md:hidden">
                     <span className="text-sm font-semibold tabular-nums">

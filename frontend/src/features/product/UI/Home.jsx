@@ -9,7 +9,6 @@ function Home() {
   const { products, error, loading, fetchProducts } = useProduct();
   useEffect(() => {
     fetchProducts();
-    console.log(products.length === 0 ? "empty" : products)
   }, [])
   return (
     <div className="flex min-h-dvh flex-col bg-white text-neutral-900">

@@ -8,7 +8,7 @@ export const mockProducts = [
       { url: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop" },
       { url: "https://images.unsplash.com/photo-1503341504253-dff4815485f1?q=80&w=800&auto=format&fit=crop" },
     ],
-    verient: [
+    variant: [
       {
         images: [{ url: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop" }],
         price: { basePrice: 999, currency: "INR" },
@@ -31,7 +31,7 @@ export const mockProducts = [
     images: [
       { url: "https://images.unsplash.com/photo-1542272604-787c3835535d?q=80&w=800&auto=format&fit=crop" },
     ],
-    verient: [
+    variant: [
       {
         images: [{ url: "https://images.unsplash.com/photo-1542272604-787c3835535d?q=80&w=800&auto=format&fit=crop" }],
         price: { basePrice: 1999, currency: "INR" },
@@ -48,7 +48,7 @@ export const mockProducts = [
     images: [
       { url: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=800&auto=format&fit=crop" },
     ],
-    verient: [
+    variant: [
       {
         images: [{ url: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=800&auto=format&fit=crop" }],
         price: { basePrice: 1499, currency: "INR" },
@@ -65,7 +65,7 @@ export const mockProducts = [
     images: [
       { url: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=800&auto=format&fit=crop" },
     ],
-    verient: [],
+    variant: [],
   },
   {
     _id: "mock-p5",
@@ -75,7 +75,7 @@ export const mockProducts = [
     images: [
       { url: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=800&auto=format&fit=crop" },
     ],
-    verient: [
+    variant: [
       {
         images: [{ url: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=800&auto=format&fit=crop" }],
         price: { basePrice: 1799, currency: "INR" },
@@ -98,7 +98,7 @@ export const mockProducts = [
     images: [
       { url: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=800&auto=format&fit=crop" },
     ],
-    verient: [
+    variant: [
       {
         images: [{ url: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=800&auto=format&fit=crop" }],
         price: { basePrice: 1299, currency: "INR" },
@@ -116,21 +116,21 @@ export const formatPrice = (price) => {
 };
 
 export const variantPriceRange = (product) => {
-  const prices = (product.verient ?? [])
+  const prices = (product.variant ?? [])
     .map((v) => v.price?.basePrice)
     .filter((p) => typeof p === "number");
   if (prices.length === 0) return null;
-  return { min: Math.min(...prices), max: Math.max(...prices), currency: product.verient[0]?.price?.currency ?? "INR" };
+  return { min: Math.min(...prices), max: Math.max(...prices), currency: product.variant[0]?.price?.currency ?? "INR" };
 };
 
 export const totalStock = (product) =>
-  (product.verient ?? []).reduce(
+  (product.variant ?? []).reduce(
     (sum, v) => sum + (typeof v.stock?.basePrice === "number" ? v.stock.basePrice : 0),
     0,
   );
 
 export const stockState = (product) => {
-  if (!product.verient || product.verient.length === 0) return "nostock";
+  if (!product.variant || product.variant.length === 0) return "nostock";
   const total = totalStock(product);
   if (total <= 0) return "out";
   if (total <= 5) return "low";
@@ -138,7 +138,7 @@ export const stockState = (product) => {
 };
 
 export const sizeList = (product) => {
-  const sizes = (product.verient ?? [])
+  const sizes = (product.variant ?? [])
     .map((v) => v.attributes?.size)
     .filter(Boolean);
   return [...new Set(sizes)];
