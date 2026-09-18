@@ -8,7 +8,7 @@ export const formatPrice = (price) => {
 };
 
 export const variantPriceRange = (product) => {
-  const variants = product?.verient || product?.variant || [];
+  const variants = product?.variant || [];
   const prices = variants
     .map((variant) => variant.price)
     .filter((price) => Number.isFinite(price?.basePrice));
@@ -21,7 +21,7 @@ export const variantPriceRange = (product) => {
 };
 
 export const totalStock = (product) => {
-  const variants = product?.verient || product?.variant || [];
+  const variants = product?.variant || [];
   return variants.reduce(
     (sum, variant) => sum + (Number.isFinite(variant.stock) ? Math.max(0, variant.stock) : 0),
     0,
@@ -29,14 +29,14 @@ export const totalStock = (product) => {
 };
 
 export const stockState = (product) => {
-  const variants = product?.verient || product?.variant || [];
+  const variants = product?.variant || [];
   if (!variants.length) return "nostock";
   const total = totalStock(product);
   return total === 0 ? "out" : total <= 5 ? "low" : "in";
 };
 
 export const sizeList = (product) => {
-  const variants = product?.verient || product?.variant || [];
+  const variants = product?.variant || [];
   return [...new Set(
     variants.map((variant) => variant.attributes?.size).filter(Boolean),
   )];
