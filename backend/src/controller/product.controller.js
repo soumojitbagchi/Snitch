@@ -19,7 +19,7 @@ export const createProduct = async (req, res) => {
             title,
             description,
             images: files.map((f) => ({ url: f.url })),
-            verient: [
+            variant: [
                 {
                     images: [],
                     price: {
@@ -54,10 +54,10 @@ export const updatePriceInfo = async (req, res) => {
             return res.status(404).json({ message: "Product not found", success: false });
         }
         const index = Number(variantIndex) || 0;
-        if (!data.verient[index]) {
+        if (!data.variant[index]) {
             return res.status(404).json({ message: "Variant not found", success: false });
         }
-        data.verient[index].price.basePrice = Number(priceAmount);
+        data.variant[index].price.basePrice = Number(priceAmount);
         await data.save();
         res.status(200).json({ message: "Price updated successfully", data, success: true });
     } catch (error) {

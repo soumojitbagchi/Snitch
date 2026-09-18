@@ -23,7 +23,7 @@ const productSchema = mongoose.Schema({
             }
         }
     ],
-    verient: [
+    variant: [
         {
             images: [{
                 url: {

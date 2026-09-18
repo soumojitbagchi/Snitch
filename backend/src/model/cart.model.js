@@ -15,12 +15,7 @@ const cartItemSchema = mongoose.Schema({
         min: 1,
 
     },
-    stock: {
-        type: Number,
-        required: true,
-        min: 0,
-    },
-    varient: {
+    variant: {
         type: mongoose.Schema.Types.ObjectId,
         required: false,
     }
