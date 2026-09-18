@@ -30,7 +30,6 @@ export default function CartItem({ item, onDelete, onUpdateQuantity }) {
       data-testid={`cart-item-${item.id}`}
       className="group relative flex flex-col gap-4 border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-300 sm:flex-row sm:items-center sm:justify-between sm:p-5"
     >
-      {/* Product Image & Info */}
       <div className="flex items-center gap-4 min-w-0 flex-1">
         <Link
           to={`/product/${item.productId}`}
@@ -51,7 +50,7 @@ export default function CartItem({ item, onDelete, onUpdateQuantity }) {
 
         <div className="min-w-0 flex-1">
           <Link
-            to={`/product/${item.productId}`}
+            to={`/product/${item?.productId}`}
             className="truncate text-sm font-semibold text-neutral-900 transition-colors hover:underline"
           >
             {item.title}
@@ -83,9 +82,7 @@ export default function CartItem({ item, onDelete, onUpdateQuantity }) {
         </div>
       </div>
 
-      {/* Side Actions Area: Quantity & Side Delete Button */}
       <div className="flex items-center justify-between border-t border-neutral-100 pt-3 sm:border-t-0 sm:pt-0 sm:justify-end sm:gap-6">
-        {/* Quantity Stepper */}
         <div className="flex items-center border border-neutral-200">
           <button
             type="button"
@@ -109,11 +106,10 @@ export default function CartItem({ item, onDelete, onUpdateQuantity }) {
           </button>
         </div>
 
-        {/* Side Delete Button (as explicitly requested) */}
         <button
           type="button"
           aria-label={`Delete ${item.title} from cart`}
-          onClick={() => onDelete(item.id)}
+          onClick={onDelete}
           className="flex h-9 items-center gap-1.5 border border-neutral-200 px-3 text-xs font-medium text-neutral-600 transition-colors hover:border-red-600 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-red-600"
         >
           <TrashIcon />
