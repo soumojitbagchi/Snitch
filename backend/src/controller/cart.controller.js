@@ -138,6 +138,41 @@ export const deleteFromCartController = async (req, res) => {
     }
 };
 
+export const updateCartQuantityController = async (req, res) => {
+    try {
+        const { productId, variantId, quantity } = req.body;
+        if (!mongoose.isValidObjectId(productId)) throw httpError(400, "Invalid product id");
+        if (variantId && !mongoose.isValidObjectId(variantId)) throw httpError(400, "Invalid variant id");
+
+        const amount = Number(quantity);
+        if (!Number.isSafeInteger(amount) || amount < 1) {
+            throw httpError(400, "Quantity must be a positive whole number");
+        }
+
+        const { variant } = await getProductVariant(productId, variantId);
+        if (amount > variant.stock) throw httpError(400, "Requested quantity exceeds available stock");
+
+        const userCart = await Cart.findOne({ user: req.user._id });
+        if (!userCart) throw httpError(404, "Cart not found");
+
+        const item = userCart.items.find((cartItem) =>
+            cartItem.product.toString() === productId &&
+            (cartItem.variant?.toString() ?? null) === (variantId ?? null)
+        );
+        if (!item) throw httpError(404, "Cart item not found");
+
+        item.quantity = amount;
+        await userCart.save();
+        return res.status(200).json({
+            success: true,
+            message: "Cart quantity updated successfully",
+            cart: await buildCartResponse(userCart._id),
+        });
+    } catch (error) {
+        return sendCartError(res, error);
+    }
+};
+
 export const calculateCartTotalController = async (req, res) => {
     try {
         const userCart = await Cart.findOne({ user: req.user._id });
