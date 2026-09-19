@@ -221,12 +221,7 @@ export default function PaymentPage({
     }
 
     initializePayment({
-      order: {
-        id: activeOrder.id,
-        total: grandTotal,
-        currency: "INR",
-        items: activeOrder.items,
-      },
+      order: activeOrder,
       customer: {
         name: customer.fullName,
         email: customer.email,

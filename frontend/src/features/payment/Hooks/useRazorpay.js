@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { createRazorpayOrder, verifyRazorpayPayment } from "../service/payment.api";
+import { success } from "../../redux/auth.slice";
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
@@ -38,6 +39,12 @@ export default function useRazorpay() {
       setLoading(true);
       setError("");
 
+      const items = order.items.map((item) => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+      }));
+
       const isLoaded = await loadRazorpayScript();
       if (!isLoaded || !window.Razorpay) {
         const errorMsg = "Unable to load Razorpay payment gateway. Please check your connection.";
@@ -49,14 +56,9 @@ export default function useRazorpay() {
 
       try {
         const orderData = await createRazorpayOrder({
-          amount: order.total,
-          currency: order.currency || "INR",
-          receipt: order.id,
+          source: order.source || "direct",
+          items,
           orderId: order.id,
-          notes: {
-            order_id: order.id,
-            customer_name: customer?.name || "",
-          },
         });
 
         const { order_id, amount, currency, key_id } = orderData;
@@ -89,8 +91,6 @@ export default function useRazorpay() {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_signature: response.razorpay_signature,
-                amount: order.total,
-                currency: currency || "INR",
               });
 
               setLoading(false);
@@ -99,11 +99,12 @@ export default function useRazorpay() {
                 razorpayOrderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
-                amount: order.total,
+                amount: amount / 100,
                 currency: currency || "INR",
                 method: "Razorpay",
                 verified: true,
                 message: verifyData.message || "Payment verified successfully",
+                success: verifyData.success,
               };
               setPaymentResult(result);
               if (onSuccess) onSuccess(result);

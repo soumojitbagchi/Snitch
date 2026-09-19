@@ -1,16 +1,15 @@
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   selectCartItems,
   selectCartCount,
   selectCartTotal,
-  removeFromCart,
-  updateQuantity,
-  clearCart,
+  selectCartCurrency,
 } from "../../redux/cart.slice";
-import { createOrder } from "../../redux/order.slice";
 import CartItem from "./CartItem";
 import { formatPrice } from "../../product/utils/product";
+import useCart from "../hooks/useCart";
 
 function BagIcon() {
   return (
@@ -53,43 +52,39 @@ function ArrowRightIcon() {
 }
 
 export default function CartPage() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const cartItems = useSelector(selectCartItems);
   const totalCount = useSelector(selectCartCount);
   const totalValue = useSelector(selectCartTotal);
+  const currency = useSelector(selectCartCurrency);
 
-  const handleDeleteItem = (id) => {
-    dispatch(removeFromCart(id));
+  const { removeItem, setQuantity, cartProducts } = useCart();
+
+  useEffect(() => {
+    cartProducts().catch(() => {});
+  }, [cartProducts]);
+
+  const handleDeleteItem = async (item) => {
+    await removeItem(item.productId, item.variantId);
   };
 
-  const handleUpdateQuantity = (id, quantity) => {
-    dispatch(updateQuantity({ id, quantity }));
+  const handleUpdateQuantity = (item, quantity) => {
+    return setQuantity(item.productId, item.variantId, quantity);
   };
 
   const handlePlaceOrder = () => {
     if (cartItems.length === 0) return;
 
-    // Create the order in order.slice
-    dispatch(
-      createOrder({
+    navigate("/buy-now", {
+      state: {
+        source: "cart",
         items: cartItems,
-        totalAmount: totalValue,
-        itemCount: totalCount,
-      })
-    );
-
-    // Empty the cart
-    dispatch(clearCart());
-
-    // Redirect to orders page
-    navigate("/orders");
+      },
+    });
   };
-
   return (
     <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
-      {/* Minimal Header */}
       <header className="border-b border-neutral-200">
         <div className="mx-auto flex min-h-16 w-full max-w-[1240px] items-center justify-between px-5 sm:px-8">
           <Link
@@ -107,10 +102,8 @@ export default function CartPage() {
         </div>
       </header>
 
-      {/* Main Cart Content */}
       <main className="flex-1">
         <div className="mx-auto w-full max-w-[1000px] px-5 py-8 sm:px-8 sm:py-12">
-          {/* Page Heading & Summary Counters */}
           <div className="flex flex-col gap-2 border-b border-neutral-200 pb-6 sm:flex-row sm:items-baseline sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500">
@@ -131,14 +124,13 @@ export default function CartPage() {
                 <span className="font-medium text-neutral-600">
                   Total Value:{" "}
                   <strong className="text-neutral-900">
-                    {formatPrice({ basePrice: totalValue, currency: "INR" })}
+                    {formatPrice({ basePrice: totalValue, currency })}
                   </strong>
                 </span>
               </div>
             )}
           </div>
 
-          {/* Cart Items List */}
           {cartItems.length === 0 ? (
             <div className="py-20 text-center">
               <div className="mx-auto flex h-20 w-20 items-center justify-center border border-neutral-200 bg-neutral-50">
@@ -161,19 +153,17 @@ export default function CartPage() {
             </div>
           ) : (
             <div className="mt-8 space-y-4">
-              {/* Product Cards with Side Delete Button */}
               <div className="space-y-3">
                 {cartItems.map((item) => (
                   <CartItem
                     key={item.id}
                     item={item}
-                    onDelete={handleDeleteItem}
-                    onUpdateQuantity={handleUpdateQuantity}
+                    onDelete={()=>handleDeleteItem(item)}
+                    onUpdateQuantity={(id, quantity) => handleUpdateQuantity(item, quantity)}
                   />
                 ))}
               </div>
 
-              {/* Minimal Total Calculation Card */}
               <div className="mt-8 border border-neutral-200 bg-neutral-50 p-6">
                 <div className="flex items-center justify-between text-xs text-neutral-600">
                   <span>Products count</span>
@@ -185,7 +175,7 @@ export default function CartPage() {
                 <div className="mt-3 flex items-center justify-between border-t border-neutral-200 pt-3 text-sm font-bold text-neutral-900">
                   <span>Total Value</span>
                   <span className="tabular-nums">
-                    {formatPrice({ basePrice: totalValue, currency: "INR" })}
+                    {formatPrice({ basePrice: totalValue, currency })}
                   </span>
                 </div>
                 <p className="mt-1 text-right text-[10px] uppercase tracking-wider text-neutral-400">
@@ -193,7 +183,6 @@ export default function CartPage() {
                 </p>
               </div>
 
-              {/* Bottom "Place Order" Button */}
               <div className="mt-6 pt-2">
                 <button
                   type="button"
@@ -203,7 +192,7 @@ export default function CartPage() {
                 >
                   <span>
                     Place Order ·{" "}
-                    {formatPrice({ basePrice: totalValue, currency: "INR" })}
+                    {formatPrice({ basePrice: totalValue, currency })}
                   </span>
                   <ArrowRightIcon />
                 </button>
@@ -216,7 +205,6 @@ export default function CartPage() {
         </div>
       </main>
 
-      {/* Minimal Footer */}
       <footer className="border-t border-neutral-200 py-6 text-center text-xs text-neutral-400">
         <div className="mx-auto max-w-[1240px] px-5 sm:px-8">
           <span>Snitch © 2026 · Minimalist Menswear</span>

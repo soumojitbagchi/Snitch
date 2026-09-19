@@ -6,20 +6,14 @@ const api = axios.create({
 });
 
 export const createRazorpayOrder = async ({
-  amount,
-  currency = "INR",
-  receipt,
-  notes = {},
+  source,
+  items = [],
   orderId,
-  isSubunits = false,
 }) => {
   const response = await api.post("/create-order", {
-    amount,
-    currency,
-    receipt,
-    notes,
+    source,
+    items,
     orderId,
-    isSubunits,
   });
   return response.data;
 };
@@ -28,15 +22,11 @@ export const verifyRazorpayPayment = async ({
   razorpay_payment_id,
   razorpay_order_id,
   razorpay_signature,
-  amount,
-  currency,
 }) => {
   const response = await api.post("/verify-payment", {
     razorpay_payment_id,
     razorpay_order_id,
     razorpay_signature,
-    amount,
-    currency,
   });
   return response.data;
 };

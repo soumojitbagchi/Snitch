@@ -90,7 +90,7 @@ export default function ProductDetailsPage() {
 
   const handleBuyNow = ({ product, variant, quantity }) => {
     navigate("/buy-now", {
-      state: { product , variant, quantity },
+      state: { items: [{ product, variant, quantity: quantity || 1 }] },
     });
   };
 

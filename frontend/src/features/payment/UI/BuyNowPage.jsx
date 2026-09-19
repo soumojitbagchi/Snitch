@@ -1,5 +1,10 @@
 import { Navigate, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import PaymentPage from "./PaymentPage";
+import { clearCart } from "../../redux/cart.slice";
+import { clearRemoteCart } from "../../cart/services/cart.api";
+
+
 
 function toCheckoutItem({ product, variant, quantity = 1 }) {
   const selectedVariant = variant || product?.variant?.[0];
@@ -7,6 +12,7 @@ function toCheckoutItem({ product, variant, quantity = 1 }) {
   return {
     id: `${product._id || product.id}-buy-now`,
     productId: product._id || product.id,
+    variantId: selectedVariant?._id,
     title: product.title || "Snitch Product",
     size: selectedVariant?.attributes?.size || "Standard",
     color: selectedVariant?.attributes?.color || "Standard",
@@ -19,20 +25,33 @@ function toCheckoutItem({ product, variant, quantity = 1 }) {
 
 export default function BuyNowPage() {
   const { state } = useLocation();
+  const dispatch = useDispatch();
 
   // A direct visit or refresh has no selected product to purchase.
-  if (!state?.product) {
+  if (!Array.isArray(state?.items) || state.items.length === 0) {
     return <Navigate to="/" replace />;
   }
 
-  const item = toCheckoutItem(state);
+  const items = state.items.map((item) =>
+    item.productId ? item : toCheckoutItem(item)
+  );
+
+  const handleSuccess = async (result) => {
+    if (state.source === "cart") {
+      await clearRemoteCart();
+      dispatch(clearCart());
+    }
+    return result;
+  };
 
   return (
     <PaymentPage
       order={{
         id: `SN-${Date.now()}`,
-        items: [item],
+        source: state.source || "direct",
+        items,
       }}
+      onSuccess={handleSuccess}
     />
   );
 }

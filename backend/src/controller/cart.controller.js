@@ -190,3 +190,12 @@ export const calculateCartTotalController = async (req, res) => {
         return sendCartError(res, error);
     }
 };
+
+export const clearCartController = async (req, res) => {
+    try {
+        await Cart.deleteOne({ user: req.user._id });
+        return res.status(200).json({ success: true, message: "Cart cleared successfully" });
+    } catch (error) {
+        return sendCartError(res, error);
+    }
+};

@@ -32,8 +32,16 @@ const paymentSchema = mongoose.Schema({
         required: true,
         default: 'pending',
         enum: ['pending', 'completed', 'failed']
-    }
-},{timestamps:true})
+    },
+    items: [{
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+        variantId: { type: mongoose.Schema.Types.ObjectId, required: true },
+        quantity: { type: Number, required: true, min: 1 },
+        unitPrice: { type: Number, required: true, min: 0 },
+        lineTotal: { type: Number, required: true, min: 0 },
+        currency: { type: String, required: true },
+    }]
+}, { timestamps: true })
 
 const Payment = mongoose.model('payment', paymentSchema)
 

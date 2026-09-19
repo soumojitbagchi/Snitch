@@ -23,6 +23,10 @@ export const updateCartQuantity = async (productId, variantId, quantity) => {
     const response = await api.patch("/quantity", { productId, variantId, quantity });
     return response.data;
 };
+export const clearRemoteCart = async () => {
+    const response = await api.delete("/");
+    return response.data;
+};
 export const totalValueFromCart = async ()=>{
     const response = await api.get("/totalValue");
     return response.data;
