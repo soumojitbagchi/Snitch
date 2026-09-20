@@ -6,9 +6,7 @@ import { exchangeRate } from "../service/currencyConverter.service.js";
 const httpError = (status, message) => Object.assign(new Error(message), { status });
 
 
-let cartFindController = async (user)=>{
-    
-}
+let cartFindController = async (userId) => Cart.findOne({ user: userId });
 
 const getProductVariant = async (productId, variantId) => {
     const product = await Product.findById(productId);
@@ -24,32 +22,35 @@ const buildCartResponse = async (cartId) => {
     if (!cart) throw httpError(404, "Cart not found");
 
     let totalAmount = 0;
-    let currency = "INR";
-    const items = await Promise.all(cart.items.map(async (item) => {
+    const currency = cart.displayCurrency || "INR";
+    const items = [];
+
+    for (const item of cart.items) {
         const product = item.product;
         const variant = item.variant ? product?.variant.id(item.variant) : product?.variant[0];
-
-        let exchangeRateINR = await exchangeRate(variant.price.currency, currency);
 
         if (!product) throw httpError(404, "Product not found");
         if (!variant) throw httpError(404, "Variant not found");
 
-        totalAmount += variant.price.basePrice * item.quantity *exchangeRateINR;
-        currency = variant.price.currency;
+        const rate = await exchangeRate(variant.price.currency, currency);
+        const convertedPrice = variant.price.basePrice * rate;
+        totalAmount += convertedPrice * item.quantity;
 
-        return {
+        items.push({
             id: `${product._id}-${variant._id}`,
             productId: product._id,
             variantId: variant._id,
             title: product.title,
-            price: variant.price.basePrice,
-            currency: variant.price.currency,
+            price: convertedPrice,
+            currency,
+            originalPrice: variant.price.basePrice,
+            originalCurrency: variant.price.currency,
             size: variant.attributes?.get?.("size") ?? variant.attributes?.size,
             color: variant.attributes?.get?.("color") ?? variant.attributes?.color,
             image: variant.images?.[0]?.url || product.images?.[0]?.url || "",
             quantity: item.quantity,
-        };
-    }));
+        });
+    }
 
     cart.totalAmount = totalAmount;
     await cart.save();
@@ -64,7 +65,7 @@ const sendCartError = (res, error) => res.status(error.status || 500).json({
 
 export const cartProductViewerController = async (req, res) => {
     try {
-        const userCart = await Cart.findOne({ user: req.user._id });
+        const userCart = await cartFindController(req.user._id);
         if (!userCart) {
             return res.status(200).json({
                 success: true,
@@ -123,7 +124,7 @@ export const deleteFromCartController = async (req, res) => {
         if (!mongoose.isValidObjectId(productId)) throw httpError(400, "Invalid product id");
         if (variantId && !mongoose.isValidObjectId(variantId)) throw httpError(400, "Invalid variant id");
 
-        const userCart = await Cart.findOne({ user: req.user._id });
+        const userCart = await cartFindController(req.user._id);
         if (!userCart) throw httpError(404, "Cart not found");
 
         const item = userCart.items.find((cartItem) =>
@@ -160,7 +161,7 @@ export const updateCartQuantityController = async (req, res) => {
         const { variant } = await getProductVariant(productId, variantId);
         if (amount > variant.stock) throw httpError(400, "Requested quantity exceeds available stock");
 
-        const userCart = await Cart.findOne({ user: req.user._id });
+        const userCart = await cartFindController(req.user._id);
         if (!userCart) throw httpError(404, "Cart not found");
 
         const item = userCart.items.find((cartItem) =>
@@ -183,7 +184,7 @@ export const updateCartQuantityController = async (req, res) => {
 
 export const calculateCartTotalController = async (req, res) => {
     try {
-        const userCart = await Cart.findOne({ user: req.user._id });
+        const userCart = await cartFindController(req.user._id);
         if (!userCart) {
             return res.status(200).json({
                 success: true,
@@ -201,8 +202,31 @@ export const calculateCartTotalController = async (req, res) => {
 
 export const clearCartController = async (req, res) => {
     try {
-        await Cart.deleteOne({ user: req.user._id });
+        const userCart = await cartFindController(req.user._id);
+        if (userCart) {
+            await userCart.deleteOne();
+        }
         return res.status(200).json({ success: true, message: "Cart cleared successfully" });
+    } catch (error) {
+        return sendCartError(res, error);
+    }
+};
+
+export const chnageCurrencyController = async (req, res) => {
+    const { currency } = req.body;
+    try {
+        if (!Cart.schema.path("displayCurrency").enumValues.includes(currency)) {
+            throw httpError(400, "Unsupported currency");
+        }
+
+        const userCart = await cartFindController(req.user._id);
+        if (!userCart) {
+            return res.status(404).json({ success: false, message: "Cart not found" });
+        }
+        userCart.displayCurrency = currency;
+        await userCart.save();
+        const updatedCart = await buildCartResponse(userCart._id);
+        return res.status(200).json({ success: true, currency, cart: updatedCart });
     } catch (error) {
         return sendCartError(res, error);
     }

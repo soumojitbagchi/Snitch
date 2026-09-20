@@ -31,3 +31,7 @@ export const totalValueFromCart = async ()=>{
     const response = await api.get("/totalValue");
     return response.data;
 };
+export const changeCurrency = async (currency) => {
+    const response = await api.patch("/currency", { currency });
+    return response.data;
+};

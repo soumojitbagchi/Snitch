@@ -3,17 +3,19 @@ import {
   selectCartItems,
   selectCartCount,
   selectCartTotal,
+  selectCartCurrency,
   clearCart,
   setCart,
 } from "../../redux/cart.slice";
 import { useCallback } from "react";
-import { getCart, addProductToCart, removeProductFromCart, updateCartQuantity, totalValueFromCart } from "../services/cart.api";
+import { getCart, addProductToCart, removeProductFromCart, updateCartQuantity, totalValueFromCart , changeCurrency} from "../services/cart.api";
 
 export function useCart() {
   const dispatch = useDispatch();
   const items = useSelector(selectCartItems);
   const count = useSelector(selectCartCount);
   const total = useSelector(selectCartTotal);
+  const currency = useSelector(selectCartCurrency);
 
   const fetchCart = useCallback(async () => {
     const response = await getCart();
@@ -58,16 +60,24 @@ export function useCart() {
     return response;
   }, [dispatch]);
 
+  const handelCurrency = useCallback(async (currency) => {
+    const response = await changeCurrency(currency);
+    if (response.success && response.cart) dispatch(setCart(response.cart));
+    return response;
+  }, [dispatch]);
+
   return {
     items,
     count,
     total,
+    currency,
     addItem: handelAddProduct,
     removeItem: handelRemoveProduct,
     cartProducts: fetchCart,
     setQuantity,
     clearAll: () => dispatch(clearCart()),
     totalValue: handelTotalValue,
+    changeCurrency: handelCurrency,
   };
 }
 

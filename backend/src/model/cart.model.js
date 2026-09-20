@@ -35,6 +35,12 @@ const cartSchema = mongoose.Schema({
         required: true,
         default: 0,
         min: 0,
+    },
+    displayCurrency: {
+        type: String,
+        required: true,
+        default: "INR",
+        enum: ["INR", "USD", "GBP", "EUR"],
     }
 })
 
