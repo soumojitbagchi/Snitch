@@ -1,8 +1,14 @@
 import Cart from "../model/cart.model.js";
 import mongoose from "mongoose";
 import Product from "../model/product.model.js";
+import { exchangeRate } from "../service/currencyConverter.service.js";
 
 const httpError = (status, message) => Object.assign(new Error(message), { status });
+
+
+let cartFindController = async (user)=>{
+    
+}
 
 const getProductVariant = async (productId, variantId) => {
     const product = await Product.findById(productId);
@@ -19,14 +25,16 @@ const buildCartResponse = async (cartId) => {
 
     let totalAmount = 0;
     let currency = "INR";
-    const items = cart.items.map((item) => {
+    const items = await Promise.all(cart.items.map(async (item) => {
         const product = item.product;
         const variant = item.variant ? product?.variant.id(item.variant) : product?.variant[0];
+
+        let exchangeRateINR = await exchangeRate(variant.price.currency, currency);
 
         if (!product) throw httpError(404, "Product not found");
         if (!variant) throw httpError(404, "Variant not found");
 
-        totalAmount += variant.price.basePrice * item.quantity;
+        totalAmount += variant.price.basePrice * item.quantity *exchangeRateINR;
         currency = variant.price.currency;
 
         return {
@@ -41,7 +49,7 @@ const buildCartResponse = async (cartId) => {
             image: variant.images?.[0]?.url || product.images?.[0]?.url || "",
             quantity: item.quantity,
         };
-    });
+    }));
 
     cart.totalAmount = totalAmount;
     await cart.save();

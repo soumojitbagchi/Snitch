@@ -39,6 +39,7 @@ export const authMiddleware = async (req, res, next) => {
 
 // Any logged-in user, regardless of role (e.g. self-service account actions
 // like upgrading buyer -> seller, which buyers must be able to reach).
+// TODO: fix token expiration issue
 export const authenticate = async (req, res, next) => {
   const token = req.cookies.token;
   if (!token) {

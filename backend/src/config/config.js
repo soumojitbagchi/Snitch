@@ -43,6 +43,9 @@ if(!process.env.RAZORPAY_KEY_ID){
 if(!process.env.RAZORPAY_KEY_SECRET){
     throw new Error("razorpay key secret isnt defined")
 }
+if(!process.env.RATE_EXCHANGE){
+    throw new Error("exchange rate api isnt defined")
+}
 
 export const config={
     MONGO_URI:process.env.MONGO_URI,
@@ -53,5 +56,6 @@ export const config={
     GOOGLE_AUTH_SECRET_KEY:process.env.GOOGLE_AUTH_SECRET_KEY,
     IMAGEKIT_PRIVATE_KEY:process.env.IMAGEKIT_PRIVATE_KEY,
     RAZORPAY_KEY_ID:process.env.RAZORPAY_KEY_ID,
-    RAZORPAY_KEY_SECRET:process.env.RAZORPAY_KEY_SECRET
+    RAZORPAY_KEY_SECRET:process.env.RAZORPAY_KEY_SECRET,
+    RATE_EXCHANGE:process.env.RATE_EXCHANGE,
 }
