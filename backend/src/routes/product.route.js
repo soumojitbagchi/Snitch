@@ -33,7 +33,7 @@ productRouter.get("/details/:productId", authenticate, detailsProduct);
 productRouter.delete("/:id", authMiddleware, deleteProduct);
 productRouter.get("/all", allProducts);
 productRouter.get("/all-by-seller", authMiddleware, allProductsBySeller);
-productRouter.get("/search", productValidator.validSearch, authenticate, searchProduct);
+productRouter.get("/search", productValidator.validSearch, searchProduct);
 
 productRouter.use((err, req, res, next) => {
     if (err instanceof multer.MulterError || err?.message === 'Only image files are allowed!') {

@@ -171,7 +171,7 @@ export const detailsProduct = async (req, res) => {
 export const searchProduct = async (req, res) => {
     const { query } = req.query;
     try {
-        const data = await Product.find({ name: { $regex: query, $options: "i" } });
+        const data = await Product.find({ title: { $regex: query, $options: "i" } });
         return res.status(200).json({ message: "Products fetched successfully", data, success: true });
     } catch (error) {
         return res.status(500).json({ message: error.message, success: false });
