@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import ProductCard from "./ProductCard";
 import { variantPriceRange } from "../utils/product";
-import { useSelector } from "react-redux";
 
 function CatalogSkeleton() {
   return (

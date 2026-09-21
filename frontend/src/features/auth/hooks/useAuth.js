@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { signin, signup } from "../services/auth.api";
 import {
@@ -26,7 +27,7 @@ export const useAuth = (mode = "signin") => {
   const set = (key) => (e) => dispatch(setField({ key, value: e.target.value }));
   const setRole = (value) => dispatch(setRoleAction(value));
   const toggleShowPassword = () => dispatch(setShowPassword());
-  const resetForm = (m = mode) => dispatch(reset(m));
+  const resetForm = useCallback((m = mode) => dispatch(reset(m)), [dispatch, mode]);
 
   const submit = async () => {
     const er = {};

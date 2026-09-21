@@ -19,7 +19,7 @@ export const createProduct = async (req, res) => {
             title,
             description,
             images: files.map((f) => ({ url: f.url })),
-            verient: [
+            variant: [
                 {
                     images: [],
                     price: {
@@ -54,10 +54,10 @@ export const updatePriceInfo = async (req, res) => {
             return res.status(404).json({ message: "Product not found", success: false });
         }
         const index = Number(variantIndex) || 0;
-        if (!data.verient[index]) {
+        if (!data.variant[index]) {
             return res.status(404).json({ message: "Variant not found", success: false });
         }
-        data.verient[index].price.basePrice = Number(priceAmount);
+        data.variant[index].price.basePrice = Number(priceAmount);
         await data.save();
         res.status(200).json({ message: "Price updated successfully", data, success: true });
     } catch (error) {
@@ -171,7 +171,7 @@ export const detailsProduct = async (req, res) => {
 export const searchProduct = async (req, res) => {
     const { query } = req.query;
     try {
-        const data = await Product.find({ name: { $regex: query, $options: "i" } });
+        const data = await Product.find({ title: { $regex: query, $options: "i" } });
         return res.status(200).json({ message: "Products fetched successfully", data, success: true });
     } catch (error) {
         return res.status(500).json({ message: error.message, success: false });

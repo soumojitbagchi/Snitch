@@ -19,8 +19,7 @@ export default function Signin({ onSwitch }) {
 
   useEffect(() => {
     reset("signin");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reset]);
 
 
   const onSubmit = async (e) => {

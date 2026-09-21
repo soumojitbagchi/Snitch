@@ -3,7 +3,7 @@ import { query, validationResult } from 'express-validator'
 const validateRequest = async (req, res, next) => {
     const error = validationResult(req)
     if (!error.isEmpty()) {
-        res.status(400).json({
+        return res.status(400).json({
             error: error.array(),
             success: false
         })

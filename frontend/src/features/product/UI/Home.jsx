@@ -1,7 +1,6 @@
 import ShopGrid from "./ShopGrid";
 import Navbar from "../../../components/Navbar";
 import { useProduct } from "../hooks/useProduct";
-import { productError } from "../utils/product";
 import { useEffect } from "react";
 
 function Home() {
@@ -9,8 +8,7 @@ function Home() {
   const { products, error, loading, fetchProducts } = useProduct();
   useEffect(() => {
     fetchProducts();
-    console.log(products.length === 0 ? "empty" : products)
-  }, [])
+  }, [fetchProducts])
   return (
     <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
       <Navbar />
@@ -28,7 +26,7 @@ function Home() {
           products={products}
           loading={loading}
           error={error}
-          onRetry={() => { }} // create condition
+          onRetry={fetchProducts}
         />
       </main>
 

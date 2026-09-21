@@ -12,6 +12,11 @@ export const fetchAllProducts = async () => {
     return response.data;
 }
 
+export const searchProducts = async (query, signal) => {
+    const response = await api.get('/search', { params: { query }, signal });
+    return response.data;
+}
+
 export const fetchMyProducts = async (signal) => {
     const response = await api.get('/all-by-seller', { signal });
     return response.data;

@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import AuthPage from "./features/auth/UI/AuthPage.jsx";
 import Home from "./features/product/UI/Home.jsx";
+import SearchResultsPage from "./features/product/UI/SearchResultsPage.jsx";
 import ProductDetailsPage from "./features/product/UI/ProductDetailsPage.jsx";
 import OauthSuccess from "./features/auth/UI/OauthSucess.jsx";
 import SellerDashboard, {
@@ -9,11 +10,26 @@ import SellerDashboard, {
   SellerNewRoute,
 } from "./features/product/UI/SellerDashboard.jsx";
 import PaymentPage from "./features/payment/UI/PaymentPage.jsx";
+import BuyNowPage from "./features/payment/UI/BuyNowPage.jsx";
+import CartPage from "./features/cart/UI/CartPage.jsx";
+import OrdersPage from "./features/orders/UI/OrdersPage.jsx";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Home/>,
+  },
+  {
+    path: "/search",
+    element: <SearchResultsPage />,
+  },
+  {
+    path: "/cart",
+    element: <CartPage />,
+  },
+  {
+    path: "/orders",
+    element: <OrdersPage />,
   },
   {
     path: "/product/:id",
@@ -39,6 +55,10 @@ const router = createBrowserRouter([
       { path: "new", element: <SellerNewRoute /> },
       { path: ":id/edit", element: <SellerEditRoute /> },
     ],
+  },
+  {
+    path: "/buy-now",
+    element: <BuyNowPage />,
   },
   {
     path: "/payment",

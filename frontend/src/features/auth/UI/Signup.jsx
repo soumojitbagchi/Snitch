@@ -20,7 +20,7 @@ export default function Signup({ onSwitch }) {
 
   useEffect(() => {
     reset("signup");
-  }, []);
+  }, [reset]);
 
   const onSubmit = async (e) => {
     e.preventDefault();

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { mockProducts } from "../../product/UI/mockProducts";
 import { formatPrice } from "../../product/utils/product";
 import useRazorpay from "../Hooks/useRazorpay";
+import useCart from "../../cart/hooks/useCart";
 
 function LockIcon() {
   return (
@@ -65,10 +66,10 @@ export default function PaymentPage({
         {
           id: item1?._id || "item-1",
           title: item1?.title || "Oversized Tee",
-          size: item1?.verient?.[0]?.attributes?.size || "M",
-          color: item1?.verient?.[0]?.attributes?.color || "Black",
-          price: item1?.verient?.[0]?.price?.basePrice || 999,
-          currency: item1?.verient?.[0]?.price?.currency || "INR",
+          size: item1?.variant?.[0]?.attributes?.size || "M",
+          color: item1?.variant?.[0]?.attributes?.color || "Black",
+          price: item1?.variant?.[0]?.price?.basePrice || 999,
+          currency: item1?.variant?.[0]?.price?.currency || "INR",
           quantity: 1,
           image: item1?.images?.[0]?.url || "",
         },
@@ -77,10 +78,10 @@ export default function PaymentPage({
               {
                 id: item2._id,
                 title: item2.title,
-                size: item2.verient?.[0]?.attributes?.size || "32",
-                color: item2.verient?.[0]?.attributes?.color || "Indigo",
-                price: item2.verient?.[0]?.price?.basePrice || 1999,
-                currency: item2.verient?.[0]?.price?.currency || "INR",
+                size: item2.variant?.[0]?.attributes?.size || "32",
+                color: item2.variant?.[0]?.attributes?.color || "Indigo",
+                price: item2.variant?.[0]?.price?.basePrice || 1999,
+                currency: item2.variant?.[0]?.price?.currency || "INR",
                 quantity: 1,
                 image: item2.images?.[0]?.url || "",
               },
@@ -91,6 +92,9 @@ export default function PaymentPage({
   }, []);
 
   const activeOrder = order || defaultOrder;
+  const { items: cartItems, total: cartTotal, currency: cartCurrency, changeCurrency } = useCart();
+  const isCartCheckout = activeOrder.source === "cart";
+  const displayItems = isCartCheckout ? cartItems : activeOrder.items;
 
   const [customer, setCustomer] = useState({
     fullName: "Aarav Sharma",
@@ -103,6 +107,8 @@ export default function PaymentPage({
   });
 
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
+  const [selectedCurrency, setSelectedCurrency] = useState(() => isCartCheckout ? cartCurrency : "INR");
+  const [currencyUpdating, setCurrencyUpdating] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [couponError, setCouponError] = useState("");
@@ -119,14 +125,37 @@ export default function PaymentPage({
     resetPaymentState,
   } = useRazorpay();
 
+  const handleCurrencyChange = async (event) => {
+    const currency = event.target.value;
+    setSelectedCurrency(currency);
+
+    if (!isCartCheckout) return;
+
+    setCurrencyUpdating(true);
+    try {
+      await changeCurrency(currency);
+    } catch (error) {
+      setLocalError(error?.response?.data?.message || "Unable to update the payment currency.");
+    } finally {
+      setCurrencyUpdating(false);
+    }
+  };
+
   const subtotal = useMemo(() => {
-    return activeOrder.items.reduce(
+    if (isCartCheckout) return cartTotal;
+
+    return displayItems.reduce(
       (sum, item) => sum + item.price * (item.quantity || 1),
       0
     );
-  }, [activeOrder]);
+  }, [cartTotal, displayItems, isCartCheckout]);
 
-  const shipping = subtotal > 1499 ? 0 : 99;
+  const displayCurrency = isCartCheckout ? cartCurrency : selectedCurrency;
+  const { shippingAmount, freeShipping } = displayCurrency === "INR"
+    ? { shippingAmount: Math.round(subtotal * 0.1), freeShipping: 1499 }
+    : { shippingAmount: subtotal < 30 ? 10 : Math.round(subtotal * 0.33), freeShipping: 49 };
+
+  const shipping = subtotal > freeShipping ? 0 : shippingAmount;
   const grandTotal = Math.max(0, subtotal + shipping - appliedDiscount);
 
   const handleApplyCoupon = (e) => {
@@ -141,11 +170,11 @@ export default function PaymentPage({
     }
 
     if (clean === "SNITCH200") {
-      if (subtotal >= 1499) {
+      if (subtotal >= freeShipping) {
         setAppliedDiscount(200);
         setCouponSuccess("Code SNITCH200 applied successfully (₹200 OFF).");
       } else {
-        setCouponError("SNITCH200 requires minimum order value of ₹1,499.");
+        setCouponError("SNITCH200 requires minimum order value of " + freeShipping +`${displayCurrency}`+ ".");
       }
       return;
     }
@@ -189,6 +218,7 @@ export default function PaymentPage({
           amount: grandTotal,
           customer,
           method: paymentMethod,
+          currency: displayCurrency,
         });
         setLocalProcessing(false);
         setLocalResult(response);
@@ -212,7 +242,7 @@ export default function PaymentPage({
           paymentId: "COD-" + Date.now(),
           amount: grandTotal,
           method: "Cash on Delivery",
-          currency: "INR",
+          currency: displayCurrency,
         };
         setLocalResult(codResult);
         if (onSuccess) onSuccess(codResult);
@@ -221,12 +251,7 @@ export default function PaymentPage({
     }
 
     initializePayment({
-      order: {
-        id: activeOrder.id,
-        total: grandTotal,
-        currency: "INR",
-        items: activeOrder.items,
-      },
+      order: activeOrder,
       customer: {
         name: customer.fullName,
         email: customer.email,
@@ -286,7 +311,7 @@ export default function PaymentPage({
               <div>
                 <span className="text-neutral-500 uppercase tracking-wider">Amount Paid</span>
                 <p className="mt-1 font-semibold text-neutral-900">
-                  {formatPrice({ basePrice: activeResult.amount, currency: "INR" })}
+                  {formatPrice({ basePrice: activeResult.amount, currency: activeResult.currency || displayCurrency })}
                 </p>
               </div>
               <div>
@@ -445,7 +470,31 @@ export default function PaymentPage({
 
               <div className="border-t border-neutral-200 pt-6">
                 <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-900">
-                  2. Select Payment Method
+                  2. Payment Currency
+                </h2>
+
+                <div className="mt-4 max-w-xs">
+                  <label htmlFor="payment-currency" className="block text-[11px] font-medium uppercase tracking-wider text-neutral-600">
+                    Pay in
+                  </label>
+                  <select
+                    id="payment-currency"
+                    value={selectedCurrency}
+                    onChange={handleCurrencyChange}
+                    disabled={currencyUpdating}
+                    className="mt-1.5 min-h-11 w-full border border-neutral-300 bg-white px-3 text-xs font-semibold uppercase tracking-wider text-neutral-900 focus-visible:outline-2 focus-visible:outline-black"
+                  >
+                    <option value="INR">INR — Indian Rupee</option>
+                    <option value="USD">USD — US Dollar</option>
+                    <option value="EUR">EUR — Euro</option>
+                    <option value="GBP">GBP — British Pound</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border-t border-neutral-200 pt-6">
+                <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-900">
+                  3. Select Payment Method
                 </h2>
 
                 <div className="mt-4 space-y-3">
@@ -529,9 +578,9 @@ export default function PaymentPage({
                       Connecting Payment Gateway…
                     </span>
                   ) : paymentMethod === "razorpay" ? (
-                    `Pay ${formatPrice({ basePrice: grandTotal, currency: "INR" })} with Razorpay`
+                    `Pay ${formatPrice({ basePrice: grandTotal, currency: displayCurrency })} with Razorpay`
                   ) : (
-                    `Confirm COD Order (${formatPrice({ basePrice: grandTotal, currency: "INR" })})`
+                    `Confirm COD Order (${formatPrice({ basePrice: grandTotal, currency: displayCurrency })})`
                   )}
                 </button>
 
@@ -545,11 +594,11 @@ export default function PaymentPage({
           <aside className="lg:col-span-5">
             <div className="border border-neutral-200 bg-neutral-50 p-6 lg:sticky lg:top-8">
               <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-900">
-                Order Summary ({activeOrder.items.length})
+                Order Summary ({displayItems.length})
               </h2>
 
               <div className="mt-4 divide-y divide-neutral-200 border-y border-neutral-200">
-                {activeOrder.items.map((item, idx) => (
+                {displayItems.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3 py-3.5">
                     <div className="h-16 w-12 shrink-0 border border-neutral-200 bg-white overflow-hidden">
                       {item.image ? (
@@ -601,14 +650,14 @@ export default function PaymentPage({
                 <div className="flex justify-between text-neutral-600">
                   <span>Subtotal</span>
                   <span className="font-medium text-neutral-900 tabular-nums">
-                    {formatPrice({ basePrice: subtotal, currency: "INR" })}
+                    {formatPrice({ basePrice: subtotal, currency: displayCurrency })}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-neutral-600">
                   <span>Shipping Delivery</span>
                   <span className="font-medium text-neutral-900">
-                    {shipping === 0 ? "FREE" : formatPrice({ basePrice: shipping, currency: "INR" })}
+                    {shipping === 0 ? "FREE" : formatPrice({ basePrice: shipping, currency: displayCurrency })}
                   </span>
                 </div>
 
@@ -616,7 +665,7 @@ export default function PaymentPage({
                   <div className="flex justify-between text-emerald-700">
                     <span>Discount</span>
                     <span className="font-medium tabular-nums">
-                      - {formatPrice({ basePrice: appliedDiscount, currency: "INR" })}
+                      - {formatPrice({ basePrice: appliedDiscount, currency: displayCurrency })}
                     </span>
                   </div>
                 )}
@@ -624,7 +673,7 @@ export default function PaymentPage({
                 <div className="flex justify-between border-t border-neutral-200 pt-3 text-sm font-bold text-neutral-900">
                   <span>Total Amount</span>
                   <span className="tabular-nums">
-                    {formatPrice({ basePrice: grandTotal, currency: "INR" })}
+                    {formatPrice({ basePrice: grandTotal, currency: displayCurrency })}
                   </span>
                 </div>
                 <p className="text-[10px] text-neutral-500 uppercase tracking-wider text-right">

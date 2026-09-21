@@ -61,7 +61,32 @@ export const useProduct = () => {
     } finally {
       dispatch(setLoading(false));
     }
-  }, []);
+  }, [dispatch]);
+
+  const fetchSellerProducts = useCallback(async (signal) => {
+    dispatch(setLoading(true));
+    dispatch(setError(null));
+
+    try {
+      const response = await fetchMyProducts(signal);
+      const fetchedProducts = response?.data;
+      if (!Array.isArray(fetchedProducts)) {
+        throw new Error("Invalid products response.");
+      }
+
+      dispatch(setProducts(fetchedProducts));
+      return { ok: true, products: fetchedProducts };
+    } catch (err) {
+      if (signal?.aborted || err?.code === "ERR_CANCELED") {
+        return { ok: false, canceled: true };
+      }
+      const message = productError(err, "Failed to load your products.");
+      dispatch(setError(message));
+      return { ok: false, error: message };
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch]);
 
   const createProduct = useCallback(async (values) => {
     dispatch(setLoading(true));
@@ -206,6 +231,7 @@ export const useProduct = () => {
     pendingDelete,
 
     fetchProducts,
+    fetchSellerProducts,
     createProduct,
     renameTitle,
     changeDescription,

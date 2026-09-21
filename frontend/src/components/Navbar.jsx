@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { selectAuth, logout } from "../features/redux/auth.slice";
+import { selectCartCount } from "../features/redux/cart.slice";
 
 function SearchIcon() {
   return (
@@ -115,6 +116,7 @@ export default function Navbar({ onSearch = null }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user, token } = useSelector(selectAuth);
+  const cartCount = useSelector(selectCartCount);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -142,23 +144,25 @@ export default function Navbar({ onSearch = null }) {
 
   const handleSearchChange = (value) => {
     setSearchQuery(value);
-    if (onSearch) {
-      onSearch(value);
-    }
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+    const query = searchQuery.trim();
     if (onSearch) {
-      onSearch(searchQuery);
+      onSearch(query);
+      return;
     }
+    navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/");
   };
 
   const handleClearSearch = () => {
     setSearchQuery("");
     if (onSearch) {
       onSearch("");
+      return;
     }
+    navigate("/");
   };
 
   const handleLogout = () => {
@@ -237,14 +241,16 @@ export default function Navbar({ onSearch = null }) {
             </button>
 
             <Link
-              to="/payment"
+              to="/cart"
               aria-label="Shopping cart"
               className="relative flex h-8 w-8 items-center justify-center text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-black focus-visible:outline-2 focus-visible:outline-black sm:h-10 sm:w-10"
             >
               <CartIcon />
-              <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center bg-black px-1 text-[8px] font-bold text-white sm:right-1 sm:top-1 sm:h-4 sm:min-w-4 sm:text-[9px]">
-                2
-              </span>
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center bg-black px-1 text-[8px] font-bold text-white sm:right-1 sm:top-1 sm:h-4 sm:min-w-4 sm:text-[9px]">
+                  {cartCount}
+                </span>
+              )}
             </Link>
 
             <button
@@ -465,13 +471,13 @@ export default function Navbar({ onSearch = null }) {
                         </Link>
 
                         <Link
-                          to="/payment"
+                          to="/cart"
                           onClick={() => setProfileOpen(false)}
                           className="flex items-center justify-between border border-neutral-200 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-900 transition-colors hover:border-black hover:bg-neutral-50"
                         >
                           <div className="flex items-center gap-2.5">
                             <CartIcon />
-                            <span>Checkout & Active Bag (2 items)</span>
+                            <span>Active Bag ({cartCount} {cartCount === 1 ? "item" : "items"})</span>
                           </div>
                           <ChevronRightIcon />
                         </Link>
@@ -537,6 +543,14 @@ export default function Navbar({ onSearch = null }) {
                           Delivered on Aug 28, 2026
                         </p>
                       </div>
+
+                      <Link
+                        to="/orders"
+                        onClick={() => setProfileOpen(false)}
+                        className="mt-3 block border border-black bg-black py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-neutral-800"
+                      >
+                        Open Orders Dashboard →
+                      </Link>
                     </div>
                   )}
 
