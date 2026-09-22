@@ -22,7 +22,23 @@ const OauthSuccess = () => {
     completeSignIn();
   }, [navigate, dispatch]);
 
-  return <div className="text-6xl">Signing you in...</div>;
+  return (
+    <main
+      aria-busy="true"
+      aria-live="polite"
+      className="grid min-h-screen place-items-center bg-white px-6 text-neutral-900"
+    >
+      <div className="w-full max-w-xs border-t border-neutral-900 pt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em]">
+          Snitch
+        </p>
+        <div className="mt-6 flex items-center gap-3">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-900" />
+          <p className="text-sm text-neutral-600">Signing you in</p>
+        </div>
+      </div>
+    </main>
+  );
 };
 
 export default OauthSuccess;
