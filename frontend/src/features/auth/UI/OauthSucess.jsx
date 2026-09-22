@@ -1,26 +1,26 @@
 import { useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { success } from "../../redux/auth.slice";
+import { getMe } from "../services/auth.api";
 
 const OauthSuccess = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   useEffect(() => {
-    const token = searchParams.get("token");
+    const completeSignIn = async () => {
+      try {
+        const data = await getMe();
+        dispatch(success({ user: data.user }));
+        navigate("/");
+      } catch {
+        navigate("/signin?error=oauth");
+      }
+    };
 
-    if (!token) {
-      navigate("/signin?error=oauth");
-      return;
-    }
-
-    localStorage.setItem("token", token);
-    dispatch(success({ user: null, token }));
-
-    navigate("/");
-  }, [searchParams, navigate, dispatch]);
+    completeSignIn();
+  }, [navigate, dispatch]);
 
   return <div className="text-6xl">Signing you in...</div>;
 };

@@ -13,7 +13,6 @@ const initialState = {
   loading: false,
   done: false,
   user: null,
-  token: null,
 };
 
 const authSlice = createSlice({
@@ -22,9 +21,6 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action) => {
       state.user = action.payload;
-    },
-    setToken: (state, action) => {
-      state.token = action.payload;
     },
     setValues: (state, action) => {
       state.values = action.payload;
@@ -92,7 +88,6 @@ const authSlice = createSlice({
       state.loading = false;
       state.done = true;
       state.user = action.payload.user;
-      state.token = action.payload.token;
     },
     reset: (state, action) => {
       const mode = action.payload === "signup" ? "signup" : "signin";
@@ -105,7 +100,6 @@ const authSlice = createSlice({
     },
     logout: (state) => {
       state.user = null;
-      state.token = null;
       state.done = false;
       state.errors = {};
       state.serverError = "";
@@ -115,7 +109,6 @@ const authSlice = createSlice({
 
 export const {
   setUser,
-  setToken,
   setValues,
   setField,
   setRole,

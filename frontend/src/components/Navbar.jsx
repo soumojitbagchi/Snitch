@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { selectAuth, logout } from "../features/redux/auth.slice";
 import { selectCartCount } from "../features/redux/cart.slice";
+import { logout as logoutRequest } from "../features/auth/services/auth.api";
 
 function SearchIcon() {
   return (
@@ -115,14 +116,14 @@ function MapPinIcon() {
 export default function Navbar({ onSearch = null }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user, token } = useSelector(selectAuth);
+  const { user } = useSelector(selectAuth);
   const cartCount = useSelector(selectCartCount);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const isAuthenticated = Boolean(token || localStorage.getItem("token"));
+  const isAuthenticated = Boolean(user);
   const displayName = user?.fullname || user?.name || (isAuthenticated ? "Aarav Sharma" : "Guest Member");
   const displayEmail = user?.email || (isAuthenticated ? "aarav.sharma@example.com" : "Sign in to access orders");
   const userRole = user?.role || "buyer";
@@ -165,11 +166,14 @@ export default function Navbar({ onSearch = null }) {
     navigate("/");
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
-    localStorage.removeItem("token");
-    setProfileOpen(false);
-    navigate("/signin");
+  const handleLogout = async () => {
+    try {
+      await logoutRequest();
+    } finally {
+      dispatch(logout());
+      setProfileOpen(false);
+      navigate("/signin");
+    }
   };
 
   const handleSaveProfile = (e) => {

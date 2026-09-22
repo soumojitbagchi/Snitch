@@ -4,7 +4,6 @@ import { signin, signup } from "../services/auth.api";
 import {
   selectAuth,
   setUser,
-  setToken,
   setField,
   setRole as setRoleAction,
   setErrors,
@@ -20,7 +19,7 @@ const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v ?? "").trim())
 
 export const useAuth = (mode = "signin") => {
   const dispatch = useDispatch();
-  const { values, errors, serverError, showPassword, loading, done, user, token } =
+  const { values, errors, serverError, showPassword, loading, done, user } =
     useSelector(selectAuth);
   const navigate = useNavigate();
 
@@ -85,13 +84,8 @@ export const useAuth = (mode = "signin") => {
 
       const userValue = data?.user ?? { email: values.email };
       dispatch(setUser(userValue));
-      dispatch(setToken(data?.token ?? null));
       dispatch(setDone(true));
       dispatch(setLoading(false));
-
-      if (data?.token) {
-        localStorage.setItem("token", data.token);
-      }
 
       navigate("/");
       return { ok: true };
@@ -115,7 +109,6 @@ export const useAuth = (mode = "signin") => {
     loading,
     done,
     user,
-    token,
     set,
     setRole,
     toggleShowPassword,

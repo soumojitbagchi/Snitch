@@ -50,9 +50,9 @@ export const calculateCheckoutTotal = async (items) => {
         if (variant.stock < quantity) throw checkoutError(400, "Requested quantity exceeds available stock");
 
         const itemCurrency = variant.price.currency;
-        // if (currency && currency !== itemCurrency) {
-        //     throw checkoutError(400, "All checkout items must use the same currency");
-        // }
+        if (currency && currency !== itemCurrency) {
+            throw checkoutError(400, "All checkout items must use the same currency");
+        }
         currency = itemCurrency;
 
         const unitPrice = variant.price.basePrice;

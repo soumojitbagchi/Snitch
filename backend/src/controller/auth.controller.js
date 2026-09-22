@@ -12,6 +12,7 @@ const issueToken = (user) => {
       email: user.email,
     },
     config.JWT_KEY,
+    { expiresIn: "1h" },
   );
 };
 
@@ -25,9 +26,27 @@ const setTokenCookie = (res, token) => {
   });
 };
 
+const clearTokenCookie = (res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+};
+
+const publicUser = (user) => ({
+  id: user._id,
+  fullname: user.fullname,
+  email: user.email,
+  contact: user.contact,
+  role: user.role,
+  avatar: user.avatar,
+});
+
 const signinController = async (req, res) => {
   const { email, password } = req.body;
-  const isUserExists = await userData.findOne({ email });
+  const isUserExists = await userData.findOne({ email }).select("+password");
   if (!isUserExists) {
     return res.status(401).json({
       success: false,
@@ -43,7 +62,7 @@ const signinController = async (req, res) => {
   }
   const token = issueToken(isUserExists);
   setTokenCookie(res, token);
-  res.status(200).json({ token, success: true, user: isUserExists });
+  res.status(200).json({ success: true, user: publicUser(isUserExists) });
 };
 
 const signupController = async (req, res) => {
@@ -67,8 +86,7 @@ const signupController = async (req, res) => {
   setTokenCookie(res, token);
   res.status(201).json({
     success: true,
-    token,
-    user,
+    user: publicUser(user),
   });
 };
 const googleVerifyCallback = async (
@@ -119,11 +137,16 @@ const googleCallbackController = async (req, res) => {
   }
   const token = issueToken(user);
   setTokenCookie(res, token);
-  return res.redirect(`${config.CLIENT_URL}/auth/success?token=${token}`);
+  return res.redirect(`${config.CLIENT_URL}/auth/success`);
+};
+
+const logoutController = (req, res) => {
+  clearTokenCookie(res);
+  return res.status(204).send();
 };
 
 const getMe = async (req, res) => {
-  const user = req.client;
+  const user = req.user;
   if (!user) {
     return res.status(401).json({
       warn: "User not found",
@@ -159,13 +182,14 @@ const updateRoleController = async (req, res) => {
   });
 };
 
-export { signinController, signupController, googleVerifyCallback, googleCallbackController, getMe, updateRoleController };
+export { signinController, signupController, googleVerifyCallback, googleCallbackController, logoutController, getMe, updateRoleController };
 
 export default {
   signinController,
   signupController,
   googleVerifyCallback,
   googleCallbackController,
+  logoutController,
   getMe,
   updateRoleController
 };

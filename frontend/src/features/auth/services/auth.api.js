@@ -15,6 +15,15 @@ export const signup = async ({ email, password, fullname, contact, role}) => {
   return response.data;
 };
 
+export const getMe = async () => {
+  const response = await api.get("/me");
+  return response.data;
+};
+
+export const logout = async () => {
+  await api.post("/logout");
+};
+
 export const becomeSeller = async () => {
   const response = await api.patch("/role", { role: "seller" });
   return response.data;
