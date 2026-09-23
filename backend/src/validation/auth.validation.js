@@ -11,7 +11,7 @@ export const validateRequest = (req, res, next) => {
 };
 
 const validateSigninUser = [
-  body("email").isEmail().notEmpty().withMessage("enter a valid email"),
+  body("email").trim().isEmail().withMessage("enter a valid email"),
   body("password")
     .isLength({
       min: 6,
@@ -21,13 +21,13 @@ const validateSigninUser = [
 ];
 
 const validateSignupUser = [
-  body("email").isEmail().notEmpty().withMessage("enter a valid email"),
+  body("email").trim().isEmail().withMessage("enter a valid email"),
   body("password")
     .isLength({
       min: 6,
     })
     .withMessage("password need to be atleast 6 digits long"),
-  body("fullname").notEmpty().withMessage("name is required"),
+  body("fullname").trim().notEmpty().withMessage("name is required"),
   body("contact")
     .notEmpty()
     .matches(/^\d{10}$/)

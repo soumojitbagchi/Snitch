@@ -42,10 +42,12 @@ const publicUser = (user) => ({
   contact: user.contact,
   role: user.role,
   avatar: user.avatar,
+  addresses: user.addresses,
 });
 
 const signinController = async (req, res) => {
-  const { email, password } = req.body;
+  const email = req.body.email.trim().toLowerCase();
+  const { password } = req.body;
   const isUserExists = await userData.findOne({ email }).select("+password");
   if (!isUserExists) {
     return res.status(401).json({
@@ -66,7 +68,8 @@ const signinController = async (req, res) => {
 };
 
 const signupController = async (req, res) => {
-  const { email, password, fullname, contact, role } = req.body;
+  const email = req.body.email.trim().toLowerCase();
+  const { password, fullname, contact, role } = req.body;
   const isUserExists = await userData.findOne({ email });
   const hash = await bcrypt.hash(password, 10)
   if (isUserExists) {
@@ -79,8 +82,8 @@ const signupController = async (req, res) => {
     email,
     password: hash,
     contact,
-    role,
-    fullname,
+    role: role === "seller" ? "seller" : "buyer",
+    fullname: fullname.trim(),
   });
   const token = issueToken(user);
   setTokenCookie(res, token);
@@ -158,6 +161,58 @@ const getMe = async (req, res) => {
   });
 }
 
+const updateProfileController = async (req, res) => {
+  const { fullname, contact, addresses } = req.body;
+
+  if (fullname !== undefined) {
+    if (typeof fullname !== "string" || !fullname.trim()) {
+      return res.status(400).json({ success: false, error: "Full name is required." });
+    }
+    req.user.fullname = fullname.trim();
+  }
+
+  if (contact !== undefined) {
+    if (typeof contact !== "string") {
+      return res.status(400).json({ success: false, error: "Contact must be a valid phone number." });
+    }
+    req.user.contact = contact.trim();
+  }
+
+  if (addresses !== undefined) {
+    if (!Array.isArray(addresses) || addresses.length > 5) {
+      return res.status(400).json({ success: false, error: "You can save up to five addresses." });
+    }
+
+    const requiredAddressFields = ["recipientName", "line1", "city", "state", "postalCode"];
+    const isValidAddress = addresses.every((address) =>
+      address && typeof address === "object" && requiredAddressFields.every(
+        (field) => typeof address[field] === "string" && address[field].trim(),
+      ),
+    );
+    if (!isValidAddress) {
+      return res.status(400).json({ success: false, error: "Complete all required address fields." });
+    }
+
+    req.user.addresses = addresses.map((address, index) => ({
+      label: typeof address.label === "string" && address.label.trim() ? address.label.trim() : "Home",
+      recipientName: address.recipientName.trim(),
+      phone: typeof address.phone === "string" ? address.phone.trim() : "",
+      line1: address.line1.trim(),
+      line2: typeof address.line2 === "string" ? address.line2.trim() : "",
+      city: address.city.trim(),
+      state: address.state.trim(),
+      postalCode: address.postalCode.trim(),
+      country: typeof address.country === "string" && address.country.trim() ? address.country.trim() : "India",
+      isDefault: index === 0,
+    }));
+  }
+
+  await req.user.save();
+  return res.status(200).json({ success: true, user: publicUser(req.user) });
+};
+
+
+
 const updateRoleController = async (req, res) => {
   const { role } = req.body;
   if (role !== "seller") {
@@ -182,7 +237,7 @@ const updateRoleController = async (req, res) => {
   });
 };
 
-export { signinController, signupController, googleVerifyCallback, googleCallbackController, logoutController, getMe, updateRoleController };
+export { signinController, signupController, googleVerifyCallback, googleCallbackController, logoutController, getMe, updateProfileController, updateRoleController };
 
 export default {
   signinController,
@@ -191,5 +246,6 @@ export default {
   googleCallbackController,
   logoutController,
   getMe,
+  updateProfileController,
   updateRoleController
 };

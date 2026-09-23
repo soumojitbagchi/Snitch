@@ -12,7 +12,7 @@ export const authMiddleware = async (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, config.JWT_KEY);
-    const legitUser = await userData.findById(decoded.id).select("fullname email contact role");
+    const legitUser = await userData.findById(decoded.id).select("fullname email contact role avatar addresses");
     if (!legitUser) {
       return res.status(401).json({
         success: false,
@@ -50,7 +50,7 @@ export const authenticate = async (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, config.JWT_KEY);
-    const legitUser = await userData.findById(decoded.id).select("fullname email contact role");
+    const legitUser = await userData.findById(decoded.id).select("fullname email contact role avatar addresses");
     if (!legitUser) {
       return res.status(401).json({
         success: false,

@@ -18,6 +18,7 @@ authRouter.post(
   authController.signupController,
 );
 authRouter.get("/me", authenticate, authController.getMe);
+authRouter.put("/profile", authenticate, authController.updateProfileController);
 authRouter.post("/logout", authController.logoutController);
 authRouter.patch("/role", authenticate, authController.updateRoleController);
 authRouter.get(
