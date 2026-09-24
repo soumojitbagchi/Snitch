@@ -5,6 +5,8 @@ import ProductDetails from "./ProductDetails";
 import ProductDetailsSkeleton from "./ProductDetailsSkeleton";
 import { selectCartCount, setCart } from "../../redux/cart.slice";
 import { addProductToCart } from "../../cart/services/cart.api";
+import { useEffect } from "react";
+import { fetchWishlist } from "../../redux/wishlist.slice";
 
 function StoreHeader() {
   const cartCount = useSelector(selectCartCount);
@@ -19,6 +21,12 @@ function StoreHeader() {
           Snitch
         </Link>
         <div className="flex items-center gap-6">
+          <Link
+            to="/wishlist"
+            className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-neutral-700 underline underline-offset-4 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+          >
+            Wishlist
+          </Link>
           <Link
             to="/"
             className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-neutral-700 underline underline-offset-4 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
@@ -82,6 +90,10 @@ export default function ProductDetailsPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { product, loading, error, retry } = useProductDetails(id);
+
+  useEffect(() => {
+    dispatch(fetchWishlist());
+  }, [dispatch]);
 
   const handleAddToCart = async ({ productId, variantId, quantity }) => {
     const response = await addProductToCart(productId, variantId, quantity);

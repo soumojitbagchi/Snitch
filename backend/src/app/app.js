@@ -43,4 +43,14 @@ app.use("/api/cart", CartRouter);
 app.use("/api", paymentRouter);
 app.use("/", appRouter);
 
+// Keep unexpected async/controller failures from becoming HTML responses.
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  console.error("Unhandled request error:", error);
+  return res.status(error.statusCode || error.status || 500).json({
+    success: false,
+    error: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
+  });
+});
+
 export default app;

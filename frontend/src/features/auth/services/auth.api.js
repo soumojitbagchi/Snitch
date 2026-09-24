@@ -20,6 +20,11 @@ export const getMe = async () => {
   return response.data;
 };
 
+export const updateProfile = async (profile) => {
+  const response = await api.put("/profile", profile);
+  return response.data;
+};
+
 export const logout = async () => {
   await api.post("/logout");
 };

@@ -1,25 +1,7 @@
 import { useMemo, useState } from "react";
 import { mockProducts } from "./mockProducts";
 import { formatPrice } from "../utils/product";
-
-function WishlistIcon({ filled }) {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={filled ? "text-red-600 scale-110 transition-transform duration-200" : "text-neutral-800 transition-transform duration-200"}
-    >
-      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-    </svg>
-  );
-}
+import WishlistToggleButton from "../../wishlist/UI/WishlistToggleButton";
 
 function BagIcon() {
   return (
@@ -121,8 +103,7 @@ function ChevronDownIcon({ open }) {
 export function ProductGallery({
   images = [],
   title = "Product",
-  isWishlisted = false,
-  onToggleWishlist,
+  product,
 }) {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [failedImages, setFailedImages] = useState(new Set());
@@ -196,15 +177,7 @@ export function ProductGallery({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={onToggleWishlist}
-          aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          aria-pressed={isWishlisted}
-          className="absolute right-3.5 top-3.5 flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200/80 bg-white/95 shadow-sm backdrop-blur-xs transition-all duration-200 hover:scale-110 hover:border-black hover:bg-white focus-visible:outline-2 focus-visible:outline-black focus-visible:outline-offset-2"
-        >
-          <WishlistIcon filled={isWishlisted} />
-        </button>
+        <WishlistToggleButton product={product} className="absolute right-3.5 top-3.5" />
       </div>
     </div>
   );
@@ -507,8 +480,6 @@ export default function ProductDetails({
   product: initialProduct = null,
   onAddToCart,
   onBuyNow,
-  onToggleWishlist,
-  isWishlisted: initialWishlist = false,
   className = "",
 }) {
   const product = initialProduct || mockProducts[0];
@@ -519,7 +490,6 @@ export default function ProductDetails({
 
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [wishlisted, setWishlisted] = useState(initialWishlist);
   const [addedFeedback, setAddedFeedback] = useState(false);
 
   const activeVariant = variants[selectedVariantIndex] || variants[0];
@@ -540,14 +510,6 @@ export default function ProductDetails({
       return true;
     });
   }, [product?.images, activeVariant]);
-
-  const handleToggleWishlist = () => {
-    const nextState = !wishlisted;
-    setWishlisted(nextState);
-    if (onToggleWishlist) {
-      onToggleWishlist(product, nextState);
-    }
-  };
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
@@ -583,8 +545,7 @@ export default function ProductDetails({
           <ProductGallery
             images={allImages}
             title={product.title}
-            isWishlisted={wishlisted}
-            onToggleWishlist={handleToggleWishlist}
+            product={product}
           />
         </div>
 

@@ -33,13 +33,13 @@ productRouter.put("/update-price/:id", authMiddleware, upload.none(), updatePric
 productRouter.put("/update-title/:id", authMiddleware, upload.none(), updateTitle);
 productRouter.put("/update-description/:id", authMiddleware, upload.none(), updateDescription);
 productRouter.get("/details/:productId", authenticate, detailsProduct);
+productRouter.post("/add-wishlist", authenticate, addToWishlistController);
+productRouter.get("/get-wishlist", authenticate, viewProductsWishlistController);
+productRouter.delete("/remove-wishlist", authenticate, removeFromWishlistController);
 productRouter.delete("/:id", authMiddleware, deleteProduct);
 productRouter.get("/all", allProducts);
 productRouter.get("/all-by-seller", authMiddleware, allProductsBySeller);
 productRouter.get("/search", productValidator.validSearch, searchProduct);
-productRouter.post("/add-wishlist",authenticate,addToWishlistController)
-productRouter.get("/get-wishlist",authenticate,viewProductsWishlistController)
-productRouter.delete("/remove-wishlist",authenticate,removeFromWishlistController)
 
 productRouter.use((err, req, res, next) => {
     if (err instanceof multer.MulterError || err?.message === 'Only image files are allowed!') {

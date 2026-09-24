@@ -6,6 +6,7 @@ import {
   stockState,
   variantPriceRange,
 } from "../utils/product";
+import WishlistToggleButton from "../../wishlist/UI/WishlistToggleButton";
 
 const stockLabels = {
   low: "Low stock",
@@ -28,7 +29,8 @@ export default function ProductCard({ product }) {
     : "Price unavailable";
 
   return (
-    <article className="group min-w-0">
+    <article className="group relative min-w-0">
+      <WishlistToggleButton product={product} className="absolute right-3 top-3 z-10" />
       <Link
         to={`/product/${product._id}`}
         aria-label={`View ${product.title}`}

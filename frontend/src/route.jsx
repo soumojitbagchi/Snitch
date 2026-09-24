@@ -13,6 +13,9 @@ import PaymentPage from "./features/payment/UI/PaymentPage.jsx";
 import BuyNowPage from "./features/payment/UI/BuyNowPage.jsx";
 import CartPage from "./features/cart/UI/CartPage.jsx";
 import OrdersPage from "./features/orders/UI/OrdersPage.jsx";
+import ProfilePage from "./features/profile/UI/ProfilePage.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import WishlistPage from "./features/wishlist/UI/WishlistPage.jsx";
 
 const router = createBrowserRouter([
   {
@@ -30,6 +33,14 @@ const router = createBrowserRouter([
   {
     path: "/orders",
     element: <OrdersPage />,
+  },
+  {
+    path: "/wishlist",
+    element: <ProtectedRoute><WishlistPage /></ProtectedRoute>,
+  },
+  {
+    path: "/profile",
+    element: <ProtectedRoute><ProfilePage /></ProtectedRoute>,
   },
   {
     path: "/product/:id",
