@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import AuthPage from "./features/auth/UI/AuthPage.jsx";
 import Home from "./features/product/UI/Home.jsx";
+import AboutPage from "./features/product/UI/AboutPage.jsx";
+import ContactPage from "./features/product/UI/ContactPage.jsx";
 import SearchResultsPage from "./features/product/UI/SearchResultsPage.jsx";
 import ProductDetailsPage from "./features/product/UI/ProductDetailsPage.jsx";
 import OauthSuccess from "./features/auth/UI/OauthSucess.jsx";
@@ -21,6 +23,14 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <Home/>,
+  },
+  {
+    path: "/about",
+    element: <AboutPage />,
+  },
+  {
+    path: "/contact",
+    element: <ContactPage />,
   },
   {
     path: "/search",

@@ -54,6 +54,7 @@ export default function ShopGrid({
 
   return (
     <section
+      id="products"
       aria-label="Products"
       className="mx-auto w-full max-w-[1400px] px-5 pb-12 pt-8 sm:px-8 sm:pb-16"
     >

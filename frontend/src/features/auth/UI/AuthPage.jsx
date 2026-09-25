@@ -124,26 +124,6 @@ export default function AuthPage({ initialMode = "signin" }) {
               Continue with Google
             </a>
 
-            <p className="mt-7 text-[12px] leading-5 text-neutral-400">
-              By continuing you agree to our{" "}
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                className="underline underline-offset-2 hover:text-black"
-              >
-                Terms
-              </a>{" "}
-              and{" "}
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                className="underline underline-offset-2 hover:text-black"
-              >
-                Privacy Policy
-              </a>
-              .
-            </p>
-
             <p className="mt-8 border-t border-neutral-200 pt-5 text-[11px] font-medium uppercase leading-6 tracking-[0.16em] text-neutral-400">
               Free shipping over ₹999
               <br />
