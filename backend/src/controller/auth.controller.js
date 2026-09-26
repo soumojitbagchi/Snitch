@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { config } from "../config/config.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { sendWelcomeEmail } from "../service/email.service.js";
 
 const issueToken = (user) => {
   return jwt.sign(
@@ -44,6 +45,11 @@ const publicUser = (user) => ({
   avatar: user.avatar,
   addresses: user.addresses,
 });
+
+const notifyWelcome = (user) => {
+  sendWelcomeEmail({ name: user.fullname, email: user.email })
+    .catch((error) => console.error("Welcome email failed:", error.message));
+};
 
 const signinController = async (req, res) => {
   const email = req.body.email.trim().toLowerCase();
@@ -87,6 +93,7 @@ const signupController = async (req, res) => {
   });
   const token = issueToken(user);
   setTokenCookie(res, token);
+  notifyWelcome(user);
   res.status(201).json({
     success: true,
     user: publicUser(user),
@@ -126,6 +133,7 @@ const googleVerifyCallback = async (
       role: "buyer",
       password: crypto.randomBytes(32).toString("hex"),
     });
+    user.$locals.isNewAccount = true;
     return done(null, user);
   } catch (err) {
     console.error("[googleVerify] DB error:", err?.message);
@@ -140,6 +148,7 @@ const googleCallbackController = async (req, res) => {
   }
   const token = issueToken(user);
   setTokenCookie(res, token);
+  if (user.$locals?.isNewAccount) notifyWelcome(user);
   return res.redirect(`${config.CLIENT_URL}/auth/success`);
 };
 

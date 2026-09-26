@@ -46,7 +46,15 @@ if(!process.env.RAZORPAY_KEY_SECRET){
 if(!process.env.RATE_EXCHANGE){
     throw new Error("exchange rate api isnt defined")
 }
-
+if(!process.env.GOOGLE_AUTH_APP_PASSWORD){
+    throw new Error("google auth app password isnt defined")
+}
+if(!process.env.MISTRAL_API_KEY){
+    throw new Error("mistral api key isnt defined")
+}
+if(!process.env.GOOGLE_USER){
+    throw new Error("google user isnt defined")
+}
 export const config={
     MONGO_URI:process.env.MONGO_URI,
     JWT_KEY:process.env.JWT_KEY,
@@ -58,4 +66,8 @@ export const config={
     RAZORPAY_KEY_ID:process.env.RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET:process.env.RAZORPAY_KEY_SECRET,
     RATE_EXCHANGE:process.env.RATE_EXCHANGE,
+    GOOGLE_USER:process.env.GOOGLE_USER,
+    GOOGLE_AUTH_APP_PASSWORD:process.env.GOOGLE_AUTH_APP_PASSWORD,
+    MISTRAL_API_KEY:process.env.MISTRAL_API_KEY,
+    MISTRAL_MODEL:process.env.MISTRAL_MODEL || "mistral-small-latest",
 }
