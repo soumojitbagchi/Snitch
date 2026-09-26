@@ -2,7 +2,7 @@ import Product from "../model/product.model.js";
 import Wishlist from "../model/wishlist.model.js";
 import mongoose from "mongoose";
 import uploadFiles from "../service/imageKit.service.js";
-import { generateProductDescription } from "../service/ai.service.js";
+import { generateProductDescription, aiSuggestion } from "../service/ai.service.js";
 
 export const createProduct = async (req, res) => {
     try {
@@ -298,3 +298,32 @@ export const viewProductsWishlistController = async (req, res) => {
         throw new Error
     }
 }
+
+export const aiSuggestionController = async (req, res) => {
+    try {
+        const userId = String(req.user._id);
+        // Product page context: GET /api/product/ai-suggestion?productId=<id>
+        const currentProductId = req.query?.productId || req.body?.productId;
+        if (currentProductId && !mongoose.isValidObjectId(currentProductId)) {
+            return res.status(400).json({ message: "Invalid productId", success: false });
+        }
+        const suggestions = await aiSuggestion(userId, currentProductId);
+        return res.status(200).json({
+            suggestions,
+            success: true,
+        });
+    } catch (error) {
+        console.error("AI suggestion failed:", error?.stack || error?.message || error);
+        const upstream = error?.statusCode || error?.status || error?.code;
+        return res.status(503).json({
+            message: "Recommendation service is unavailable",
+            // Expose upstream reason outside production so a 401/429/5xx
+            // from OpenRouter doesn't masquerade as a mystery 503.
+            ...(process.env.NODE_ENV !== "production"
+                ? { error: error?.message || String(error), upstream }
+                : {}),
+            success: false,
+        });
+    }
+}
+

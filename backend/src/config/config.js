@@ -55,6 +55,12 @@ if(!process.env.MISTRAL_API_KEY){
 if(!process.env.GOOGLE_USER){
     throw new Error("google user isnt defined")
 }
+if(!process.env.OPENROUTER_API_KEY){
+    throw new Error("openrouter api key isnt defined")
+}
+if(!process.env.OPENROUTER_MODEL){
+    throw new Error("openrouter model isnt defined")
+}
 export const config={
     MONGO_URI:process.env.MONGO_URI,
     JWT_KEY:process.env.JWT_KEY,
@@ -69,5 +75,7 @@ export const config={
     GOOGLE_USER:process.env.GOOGLE_USER,
     GOOGLE_AUTH_APP_PASSWORD:process.env.GOOGLE_AUTH_APP_PASSWORD,
     MISTRAL_API_KEY:process.env.MISTRAL_API_KEY,
-    MISTRAL_MODEL:process.env.MISTRAL_MODEL || "mistral-small-latest",
+    MISTRAL_MODEL:process.env.MISTRAL_MODEL,
+    OPENROUTER_API_KEY:process.env.OPENROUTER_API_KEY,
+    OPENROUTER_MODEL:process.env.OPENROUTER_MODEL,
 }

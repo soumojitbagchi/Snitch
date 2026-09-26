@@ -2,6 +2,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import useProductDetails from "../hooks/useProductDetails";
 import ProductDetails from "./ProductDetails";
+import AiSuggestions from "./AiSuggestions";
 import ProductDetailsSkeleton from "./ProductDetailsSkeleton";
 import { selectCartCount, setCart } from "../../redux/cart.slice";
 import { addProductToCart } from "../../cart/services/cart.api";
@@ -131,6 +132,7 @@ export default function ProductDetailsPage() {
               onBuyNow={handleBuyNow}
               className="pt-2"
             />
+            <AiSuggestions productId={id} />
           </>
         )}
       </main>

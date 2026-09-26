@@ -75,3 +75,11 @@ export const productData = async (productId, signal) => {
     const response = await api.get(`/details/${productId}`, { signal });
     return response.data;
 }
+
+export const fetchAiSuggestions = async (productId, signal) => {
+    const response = await api.get('/ai-suggestion', {
+        params: productId ? { productId } : {},
+        signal,
+    });
+    return response.data;
+}

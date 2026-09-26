@@ -12,7 +12,8 @@ import {
     searchProduct,
     addToWishlistController,
     removeFromWishlistController,
-    viewProductsWishlistController
+    viewProductsWishlistController,
+    aiSuggestionController,
 } from "../controller/product.controller.js";
 import { authMiddleware, authenticate } from "../middleware/auth.middleware.js";
 import productValidator from "../validation/product.validation.js";
@@ -40,6 +41,7 @@ productRouter.delete("/:id", authMiddleware, deleteProduct);
 productRouter.get("/all", allProducts);
 productRouter.get("/all-by-seller", authMiddleware, allProductsBySeller);
 productRouter.get("/search", productValidator.validSearch, searchProduct);
+productRouter.get("/ai-suggestion", authenticate, aiSuggestionController);
 
 productRouter.use((err, req, res, next) => {
     if (err instanceof multer.MulterError || err?.message === 'Only image files are allowed!') {
