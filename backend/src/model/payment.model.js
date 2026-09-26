@@ -33,6 +33,15 @@ const paymentSchema = mongoose.Schema({
         default: 'pending',
         enum: ['pending', 'completed', 'failed']
     },
+    couponCode: {
+        type: String,
+        default: ''
+    },
+    discount: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
     items: [{
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
         variantId: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -40,6 +49,12 @@ const paymentSchema = mongoose.Schema({
         unitPrice: { type: Number, required: true, min: 0 },
         lineTotal: { type: Number, required: true, min: 0 },
         currency: { type: String, required: true },
+        // Snapshot at purchase time — keeps email/order history stable
+        // even if the product is later edited or deleted.
+        title: { type: String, default: 'Product' },
+        image: { type: String, default: '' },
+        size: { type: String, default: '' },
+        color: { type: String, default: '' },
     }]
 }, { timestamps: true })
 

@@ -58,6 +58,7 @@ export default function useRazorpay() {
           source: order.source || "direct",
           items,
           orderId: order.id,
+          couponCode: order.couponCode,
         });
 
         const { order_id, amount, currency, key_id } = orderData;

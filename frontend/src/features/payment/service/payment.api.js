@@ -9,11 +9,21 @@ export const createRazorpayOrder = async ({
   source,
   items = [],
   orderId,
+  couponCode,
 }) => {
   const response = await api.post("/create-order", {
     source,
     items,
     orderId,
+    couponCode,
+  });
+  return response.data;
+};
+
+export const validateCoupon = async ({ code, subtotal }) => {
+  const response = await api.post("/coupon/validate", {
+    code,
+    subtotal,
   });
   return response.data;
 };

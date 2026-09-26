@@ -2,7 +2,9 @@ import crypto from "node:crypto";
 import razorpayInstance from "../service/razorpay.service.js";
 import { config } from "../config/config.js";
 import Payment from "../model/payment.model.js";
-import { calculateCheckoutTotal, getCheckoutItems } from "../service/checkout.service.js";
+import Coupon from "../model/coupon.model.js";
+import { sendOrderConfirmationEmail } from "../service/email.service.js";
+import { calculateCheckoutTotal, getCheckoutItems, reCalculateStock } from "../service/checkout.service.js";
 
 async function executeWithRetry(apiFn, retries = 2, delayMs = 300) {
     let lastError;
@@ -27,11 +29,11 @@ export const createOrder = async (req, res) => {
     }
 
     try {
-        const { source = "direct", items = [], orderId } = req.body;
+        const { source = "direct", items = [], orderId, couponCode } = req.body;
         const requestedItems = await getCheckoutItems({ source, items, userId: req.user._id });
-        const checkout = await calculateCheckoutTotal(requestedItems);
+        const checkout = await calculateCheckoutTotal({ items: requestedItems.items, currency: requestedItems.currency, couponCode });
         const receipt = String(orderId || `rcpt_${Date.now()}`).slice(0, 40);
-        const amountInSubunits = Math.round(checkout.total * 100);
+        const amountInSubunits = Math.round(checkout.payable * 100);
 
         if (amountInSubunits < 100) {
             return res.status(400).json({ success: false, error: "amount must be at least 1.00" });
@@ -39,7 +41,7 @@ export const createOrder = async (req, res) => {
 
         const razorpayOrder = await executeWithRetry(() => razorpayInstance.orders.create({
             amount: amountInSubunits,
-            currency: checkout.currency,
+            currency: requestedItems.currency,
             receipt,
             notes: { order_id: receipt, source },
         }));
@@ -50,10 +52,12 @@ export const createOrder = async (req, res) => {
 
         await Payment.create({
             user: req.user._id,
-            amount: checkout.total,
-            currency: checkout.currency,
+            amount: checkout.payable,
+            currency: requestedItems.currency,
             orderId: razorpayOrder.id,
             items: checkout.items,
+            couponCode: checkout.coupon || "",
+            discount: checkout.discount,
             paymentStatus: "pending",
         });
 
@@ -63,6 +67,9 @@ export const createOrder = async (req, res) => {
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
             key_id: config.RAZORPAY_KEY_ID,
+            subtotal: checkout.total,
+            discount: checkout.discount,
+            coupon: checkout.coupon,
         });
     } catch (error) {
         const status = error.status || error.statusCode || 503;
@@ -110,6 +117,49 @@ export const verifyPayment = async (req, res) => {
         payment.signature = razorpay_signature;
         payment.paymentStatus = "completed";
         await payment.save();
+        await reCalculateStock(payment.items);
+
+        // Consume one coupon redemption — atomic so concurrent checkouts
+        // can't overspend a limited stock. Best-effort: payment is already
+        // complete, so a failure here must not fail verification.
+        if (payment.couponCode && payment.discount > 0) {
+            await Coupon.findOneAndUpdate(
+                { coupon: payment.couponCode, stock: { $gt: 0 } },
+                { $inc: { stock: -1 } },
+            ).catch((error) => console.error("Coupon stock decrement failed:", error.message));
+        }
+
+        await payment.populate([
+            { path: "user", select: "fullname email" },
+            { path: "items.productId", select: "title images variant" },
+        ]);
+        sendOrderConfirmationEmail({
+            name: payment.user.fullname,
+            email: payment.user.email,
+            orderId: payment.orderId,
+            paymentId: payment.paymentId,
+            amount: payment.amount,
+            currency: payment.currency,
+            items: payment.items.map((item) => {
+                // Prefer the purchase-time snapshot; fall back to live product
+                // data for payments created before snapshots were stored.
+                const liveProduct = item.productId && typeof item.productId === "object" ? item.productId : null;
+                const liveVariant = liveProduct && item.variantId
+                    ? liveProduct.variant?.id?.(item.variantId) ?? liveProduct.variant?.find?.((v) => String(v._id) === String(item.variantId))
+                    : null;
+                const liveAttrs = liveVariant?.attributes;
+                return {
+                    title: item.title || liveProduct?.title || "Product",
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    lineTotal: item.lineTotal,
+                    currency: item.currency,
+                    image: item.image || liveVariant?.images?.[0]?.url || liveProduct?.images?.[0]?.url || "",
+                    size: item.size || (liveAttrs?.get?.("size") ?? liveAttrs?.size ?? ""),
+                    color: item.color || (liveAttrs?.get?.("color") ?? liveAttrs?.color ?? ""),
+                };
+            }),
+        }).catch((error) => console.error("Order confirmation email failed:", error.message));
 
         return res.status(200).json({
             success: true,

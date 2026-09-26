@@ -4,6 +4,8 @@ import { mockProducts } from "../../product/UI/mockProducts";
 import { formatPrice } from "../../product/utils/product";
 import useRazorpay from "../Hooks/useRazorpay";
 import useCart from "../../cart/hooks/useCart";
+import useCoupon from "../Hooks/useCoupon";
+import { couponErrorMessage } from "../service/coupon.api";
 
 function LockIcon() {
   return (
@@ -109,10 +111,17 @@ export default function PaymentPage({
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [selectedCurrency, setSelectedCurrency] = useState(() => isCartCheckout ? cartCurrency : "INR");
   const [currencyUpdating, setCurrencyUpdating] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState(0);
-  const [couponError, setCouponError] = useState("");
-  const [couponSuccess, setCouponSuccess] = useState("");
+  const {
+    couponCode,
+    setCouponCode,
+    appliedCoupon,
+    appliedDiscount,
+    validating: couponValidating,
+    error: couponError,
+    success: couponSuccess,
+    applyCoupon,
+    revalidateCoupon,
+  } = useCoupon();
   const [localProcessing, setLocalProcessing] = useState(false);
   const [localResult, setLocalResult] = useState(null);
   const [localError, setLocalError] = useState("");
@@ -160,33 +169,7 @@ export default function PaymentPage({
 
   const handleApplyCoupon = (e) => {
     e.preventDefault();
-    setCouponError("");
-    setCouponSuccess("");
-    const clean = couponCode.trim().toUpperCase();
-
-    if (!clean) {
-      setCouponError("Please enter a valid coupon code.");
-      return;
-    }
-
-    if (clean === "SNITCH200") {
-      if (subtotal >= freeShipping) {
-        setAppliedDiscount(200);
-        setCouponSuccess("Code SNITCH200 applied successfully (₹200 OFF).");
-      } else {
-        setCouponError("SNITCH200 requires minimum order value of " + freeShipping +`${displayCurrency}`+ ".");
-      }
-      return;
-    }
-
-    if (clean === "FIRST50") {
-      const disc = Math.round(subtotal * 0.1);
-      setAppliedDiscount(disc);
-      setCouponSuccess(`Code FIRST50 applied successfully (₹${disc} OFF).`);
-      return;
-    }
-
-    setCouponError("Invalid or expired coupon code.");
+    return applyCoupon({ subtotal, currency: displayCurrency });
   };
 
   const handleInputChange = (field, value) => {
@@ -250,8 +233,16 @@ export default function PaymentPage({
       return;
     }
 
+    // Re-validate against the live subtotal so the displayed discount
+    // always matches what the backend will actually charge.
+    const recheck = await revalidateCoupon({ subtotal });
+    if (!recheck.ok) {
+      setLocalError(couponErrorMessage(recheck.error, "Coupon is no longer valid for this order."));
+      return;
+    }
+
     initializePayment({
-      order: activeOrder,
+      order: { ...activeOrder, couponCode: appliedCoupon || undefined },
       customer: {
         name: customer.fullName,
         email: customer.email,
@@ -637,9 +628,10 @@ export default function PaymentPage({
                   />
                   <button
                     type="submit"
-                    className="min-h-10 border border-black bg-white px-4 text-xs font-semibold uppercase tracking-wider text-black transition-colors hover:bg-black hover:text-white"
+                    disabled={couponValidating}
+                    className="min-h-10 border border-black bg-white px-4 text-xs font-semibold uppercase tracking-wider text-black transition-colors hover:bg-black hover:text-white disabled:opacity-50"
                   >
-                    Apply
+                    {couponValidating ? "Checking…" : "Apply"}
                   </button>
                 </div>
                 {couponError && <p className="mt-1.5 text-xs text-red-600">{couponError}</p>}

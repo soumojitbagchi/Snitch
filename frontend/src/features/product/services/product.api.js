@@ -63,6 +63,14 @@ export const deleteProduct = async (productId) => {
     return response.data;
 }
 
+export const validateToken = async (couponCode, subtotal) => {
+    const response = await api.post('/validate-token', {
+        code: couponCode,
+        subtotal: subtotal
+    });
+    return response.data;
+}
+
 export const productData = async (productId, signal) => {
     const response = await api.get(`/details/${productId}`, { signal });
     return response.data;
