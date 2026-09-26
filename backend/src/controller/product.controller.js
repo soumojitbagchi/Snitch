@@ -2,11 +2,30 @@ import Product from "../model/product.model.js";
 import Wishlist from "../model/wishlist.model.js";
 import mongoose from "mongoose";
 import uploadFiles from "../service/imageKit.service.js";
+import { generateProductDescription } from "../service/ai.service.js";
 
 export const createProduct = async (req, res) => {
     try {
         const { title, description, priceAmount, priceCurrency, size, color, stockAmount } = req.body;
         const seller = req.user;
+        let generatedDescription;
+        try {
+            generatedDescription = await generateProductDescription({
+                title,
+                sellerDescription: description,
+                priceAmount,
+                priceCurrency,
+                size,
+                color,
+                stockAmount,
+            });
+        } catch (error) {
+            console.error("Product description generation failed:", error.message);
+            return res.status(503).json({
+                message: "Product description service is unavailable",
+                success: false,
+            });
+        }
         const uploads = req.files ?? [];
         const files = await Promise.all(
             uploads.map((file) => {
@@ -19,7 +38,7 @@ export const createProduct = async (req, res) => {
         );
         const product = await Product.create({
             title,
-            description,
+            description: generatedDescription,
             images: files.map((f) => ({ url: f.url })),
             variant: [
                 {
@@ -279,4 +298,3 @@ export const viewProductsWishlistController = async (req, res) => {
         throw new Error
     }
 }
-j

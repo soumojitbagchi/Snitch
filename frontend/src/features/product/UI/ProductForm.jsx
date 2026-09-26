@@ -119,7 +119,6 @@ export default function ProductForm({ initialValues = null, onSubmit, onCancel }
 
     const next = {};
     if (!title.trim()) next["product-title"] = "Enter a title.";
-    if (!description.trim()) next["product-description"] = "Enter a description.";
     if (!editing && !uploads.length) {
       next["product-images"] = "Choose at least one image.";
     }
@@ -258,17 +257,15 @@ export default function ProductForm({ initialValues = null, onSubmit, onCancel }
             </FormField>
             <FormField
               id="product-description"
-              label="Description"
+              label="Product notes (optional)"
               error={errors["product-description"]}
-              required
             >
               <textarea
                 id="product-description"
                 rows={5}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                required
-                {...errorProps("product-description")}
+                placeholder="Optional context for the AI-generated description"
                 className={controlClass(
                   errors["product-description"],
                   "h-auto resize-y py-3"
