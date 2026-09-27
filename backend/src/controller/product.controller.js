@@ -314,14 +314,8 @@ export const aiSuggestionController = async (req, res) => {
         });
     } catch (error) {
         console.error("AI suggestion failed:", error?.stack || error?.message || error);
-        const upstream = error?.statusCode || error?.status || error?.code;
         return res.status(503).json({
             message: "Recommendation service is unavailable",
-            // Expose upstream reason outside production so a 401/429/5xx
-            // from OpenRouter doesn't masquerade as a mystery 503.
-            ...(process.env.NODE_ENV !== "production"
-                ? { error: error?.message || String(error), upstream }
-                : {}),
             success: false,
         });
     }
