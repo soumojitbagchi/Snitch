@@ -43,5 +43,6 @@ authRouter.get("/google/callback", (req, res, next) => {
     return authController.googleCallbackController(req, res);
   })(req, res, next);
 });
+authRouter.get("/refresh", authController.refreshAccessToken);
 
 export default authRouter;

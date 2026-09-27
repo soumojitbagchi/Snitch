@@ -3,15 +3,15 @@ import userData from "../model/user.model.js";
 import { config } from "../config/config.js";
 
 export const authMiddleware = async (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token) {
+  const accessToken = req.cookies.accessToken;
+  if (!accessToken) {
     return res.status(401).json({
       success: false,
       error: "Unauthorized",
     });
   }
   try {
-    const decoded = jwt.verify(token, config.JWT_KEY);
+    const decoded = jwt.verify(accessToken, config.JWT_KEY);
     const legitUser = await userData.findById(decoded.id).select("fullname email contact role avatar addresses");
     if (!legitUser) {
       return res.status(401).json({
@@ -39,17 +39,17 @@ export const authMiddleware = async (req, res, next) => {
 
 // Any logged-in user, regardless of role (e.g. self-service account actions
 // like upgrading buyer -> seller, which buyers must be able to reach).
-// TODO: fix token expiration issue
+// Uses the accessToken (1h, JWT_KEY). Expired accessTokens are
 export const authenticate = async (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token) {
+  const accessToken = req.cookies.accessToken;
+  if (!accessToken) {
     return res.status(401).json({
       success: false,
       error: "Unauthorized",
     });
   }
   try {
-    const decoded = jwt.verify(token, config.JWT_KEY);
+    const decoded = jwt.verify(accessToken, config.JWT_KEY);
     const legitUser = await userData.findById(decoded.id).select("fullname email contact role avatar addresses");
     if (!legitUser) {
       return res.status(401).json({

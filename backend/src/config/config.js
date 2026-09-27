@@ -61,6 +61,9 @@ if(!process.env.OPENROUTER_API_KEY){
 if(!process.env.OPENROUTER_MODEL){
     throw new Error("openrouter model isnt defined")
 }
+if(!process.env.JWT_SESSION_KEY){
+    throw new Error("session jwt isnt defined")
+}
 export const config={
     MONGO_URI:process.env.MONGO_URI,
     JWT_KEY:process.env.JWT_KEY,
@@ -78,4 +81,5 @@ export const config={
     MISTRAL_MODEL:process.env.MISTRAL_MODEL,
     OPENROUTER_API_KEY:process.env.OPENROUTER_API_KEY,
     OPENROUTER_MODEL:process.env.OPENROUTER_MODEL,
+    JWT_SESSION_KEY:process.env.JWT_SESSION_KEY,
 }

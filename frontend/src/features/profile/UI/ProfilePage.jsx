@@ -62,9 +62,11 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     const loadProfile = async () => {
       try {
         const data = await getMe();
+        if (cancelled) return;
         dispatch(setUser(data.user));
         setForm({
           fullname: data.user.fullname || "",
@@ -72,13 +74,18 @@ export default function ProfilePage() {
           addresses: data.user.addresses || [],
         });
       } catch {
-        setError("We could not load your account details. Please refresh and try again.");
+        if (!cancelled) {
+          setError("We could not load your account details. Please refresh and try again.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadProfile();
-  }, [dispatch, user?.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     if (loading && window.location.hash) return;
@@ -131,7 +138,7 @@ export default function ProfilePage() {
           <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-500">Your account</p>
           <h1 className="mt-1 font-serif text-3xl font-light tracking-tight sm:text-4xl">{user?.fullname || "Your profile"}</h1>
           <p className="mt-1.5 text-sm text-neutral-600">{user?.email || "Manage your personal details"}</p>
-          <p className="mt-3 inline-flex border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-600">{user?.role || "Customer"}</p>
+          <p className="mt-3 inline-flex border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-600">{(user?.role!=='buyer')?'seller':''}</p>
         </header>
 
         {loading ? (

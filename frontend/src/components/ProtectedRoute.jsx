@@ -1,20 +1,59 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { getMe } from "../features/auth/services/auth.api";
-import { setUser } from "../features/redux/auth.slice";
+import { getMe, refreshAccessToken } from "../features/auth/services/auth.api";
+import { logout, setUser } from "../features/redux/auth.slice";
+import { ACCESS_TOKEN_REFRESH_INTERVAL_MS } from "../features/auth/services/api.client";
 
 const ProtectedRoute = ({ children }) => {
   const dispatch = useDispatch();
   const [status, setStatus] = useState("checking");
 
   useEffect(() => {
-    getMe()
-      .then(({ user }) => {
+    let cancelled = false;
+    let timer = null;
+
+    const checkAccessTokenAvailable = async () => {
+      try {
+        const { user } = await getMe();
+        if (cancelled) return;
         dispatch(setUser(user));
         setStatus("authenticated");
-      })
-      .catch(() => setStatus("unauthenticated"));
+      } catch (firstError) {
+        if (firstError?.response?.status !== 401) {
+          if (!cancelled) setStatus("unauthenticated");
+          return;
+        }
+        try {
+          await refreshAccessToken();
+          const { user } = await getMe();
+          if (cancelled) return;
+          dispatch(setUser(user));
+          setStatus("authenticated");
+        } catch {
+          if (cancelled) return;
+          dispatch(logout());
+          setStatus("unauthenticated");
+        }
+      }
+    };
+
+    checkAccessTokenAvailable().then(() => {
+      if (cancelled) return;
+      timer = window.setInterval(async () => {
+        try {
+          await refreshAccessToken();
+        } catch {
+          dispatch(logout());
+          if (!cancelled) setStatus("unauthenticated");
+        }
+      }, ACCESS_TOKEN_REFRESH_INTERVAL_MS);
+    });
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearInterval(timer);
+    };
   }, [dispatch]);
 
   if (status === "checking") {

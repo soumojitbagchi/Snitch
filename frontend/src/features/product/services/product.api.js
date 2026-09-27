@@ -1,9 +1,6 @@
-import axios from 'axios'
+import { createApiClient } from '../../auth/services/api.client'
 
-const api = axios.create({
-    baseURL: '/api/product',
-    withCredentials: true,
-})
+const api = createApiClient('/api/product')
 
 export const fetchAllProducts = async () => {
     const response = await api.get('/all');
@@ -63,13 +60,15 @@ export const deleteProduct = async (productId) => {
     return response.data;
 }
 
-export const validateToken = async (couponCode, subtotal) => {
+export const validateCouponCode = async (couponCode, subtotal) => {
     const response = await api.post('/validate-token', {
         code: couponCode,
         subtotal: subtotal
     });
     return response.data;
 }
+
+export const validateToken = validateCouponCode;
 
 export const productData = async (productId, signal) => {
     const response = await api.get(`/details/${productId}`, { signal });

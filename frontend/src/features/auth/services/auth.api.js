@@ -1,23 +1,37 @@
-import axios from "axios";
+import { createApiClient, refreshAccessTokenRequest } from "./api.client";
 
-const api = axios.create({
-  baseURL: "/api/auth",
-  withCredentials: true,
-});
+const api = createApiClient("/api/auth");
 
 export const signin = async ({ email, password }) => {
   const response = await api.post("/signin", { email, password });
   return response.data;
 };
 
-export const signup = async ({ email, password, fullname, contact, role}) => {
-  const response = await api.post("/signup", { email, password ,fullname,contact,role});
+export const signup = async ({ email, password, fullname, contact, role }) => {
+  const response = await api.post("/signup", {
+    email,
+    password,
+    fullname,
+    contact,
+    role,
+  });
   return response.data;
 };
 
+export const refreshAccessToken = async () => refreshAccessTokenRequest();
+
 export const getMe = async () => {
-  const response = await api.get("/me");
-  return response.data;
+  try {
+    const response = await api.get("/me");
+    return response.data;
+  } catch (error) {
+    if (error?.response?.status === 401 && !error.config?._retry) {
+      await refreshAccessTokenRequest();
+      const retry = await api.get("/me");
+      return retry.data;
+    }
+    throw error;
+  }
 };
 
 export const updateProfile = async (profile) => {

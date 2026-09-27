@@ -5,20 +5,26 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { sendWelcomeEmail } from "../service/email.service.js";
 
-const issueToken = (user) => {
+const issueAccessToken = (user) => {
   return jwt.sign(
     {
       id: user._id,
-      fullname: user.fullname,
-      email: user.email,
+      role: user.role,
     },
     config.JWT_KEY,
     { expiresIn: "1h" },
   );
 };
+const issueRefreshToken = (user) => {
+  return jwt.sign({
+    id: user._id,
+  }, config.JWT_SESSION_KEY, {
+    expiresIn: "7d"
+  })
+}
 
-const setTokenCookie = (res, token) => {
-  res.cookie("token", token, {
+const setAccessTokenCookie = (res, token) => {
+  res.cookie("accessToken", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -26,15 +32,28 @@ const setTokenCookie = (res, token) => {
     path: "/",
   });
 };
+const setRefreshTokenCookie = (res,token) =>{
+  res.cookie("refreshToken",token,{
+    httpOnly: true,
+    secure: process.env.NODE_ENV==="production",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: "lax",
+    path: "/",
+  })
+}
 
-const clearTokenCookie = (res) => {
-  res.clearCookie("token", {
+const clearAuthCookies = (res) => {
+  const opts = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-  });
+  };
+  res.clearCookie("accessToken", opts);
+  res.clearCookie("refreshToken", opts);
 };
+
+const clearTokenCookie = clearAuthCookies;
 
 const publicUser = (user) => ({
   id: user._id,
@@ -68,8 +87,10 @@ const signinController = async (req, res) => {
       error: "wrong credentials",
     });
   }
-  const token = issueToken(isUserExists);
-  setTokenCookie(res, token);
+  const accessToken = issueAccessToken(isUserExists);
+  const refreshToken = issueRefreshToken(isUserExists);
+  setAccessTokenCookie(res, accessToken);
+  setRefreshTokenCookie(res, refreshToken);
   res.status(200).json({ success: true, user: publicUser(isUserExists) });
 };
 
@@ -91,8 +112,10 @@ const signupController = async (req, res) => {
     role: role === "seller" ? "seller" : "buyer",
     fullname: fullname.trim(),
   });
-  const token = issueToken(user);
-  setTokenCookie(res, token);
+  const accessToken = issueAccessToken(user);
+  const refreshToken = issueRefreshToken(user);
+  setAccessTokenCookie(res, accessToken);
+  setRefreshTokenCookie(res, refreshToken);
   notifyWelcome(user);
   res.status(201).json({
     success: true,
@@ -146,14 +169,16 @@ const googleCallbackController = async (req, res) => {
   if (!user) {
     return res.redirect(`${config.CLIENT_URL}/signin?error=oauth`);
   }
-  const token = issueToken(user);
-  setTokenCookie(res, token);
+  const accessToken = issueAccessToken(user);
+  const refreshToken = issueRefreshToken(user);
+  setAccessTokenCookie(res, accessToken);
+  setRefreshTokenCookie(res, refreshToken);
   if (user.$locals?.isNewAccount) notifyWelcome(user);
   return res.redirect(`${config.CLIENT_URL}/auth/success`);
 };
 
 const logoutController = (req, res) => {
-  clearTokenCookie(res);
+  clearAuthCookies(res);
   return res.status(204).send();
 };
 
@@ -246,7 +271,42 @@ const updateRoleController = async (req, res) => {
   });
 };
 
-export { signinController, signupController, googleVerifyCallback, googleCallbackController, logoutController, getMe, updateProfileController, updateRoleController };
+const refreshAccessToken = async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+  if (!refreshToken) {
+    return res.status(401).json({
+      message: "refresh token not found",
+      success: false,
+    });
+  }
+  let decoded;
+  try {
+    decoded = jwt.verify(refreshToken, config.JWT_SESSION_KEY);
+  } catch {
+    return res.status(401).json({
+      message: "invalid or expired refresh token",
+      success: false,
+    });
+  }
+  const userId = decoded.id;
+  const user = await userData.findById(userId);
+  if (!user) {
+    return res.status(404).json({
+      message: "user not found, invalid refresh token",
+      success: false,
+    });
+  }
+  const newAccessToken = issueAccessToken(user);
+  setAccessTokenCookie(res, newAccessToken);
+  return res.status(200).json({
+    success: true,
+    user: publicUser(user),
+  });
+};
+
+const refreshController = refreshAccessToken;
+
+export { signinController, signupController, googleVerifyCallback, googleCallbackController, logoutController, getMe, updateProfileController, updateRoleController, refreshAccessToken, refreshController };
 
 export default {
   signinController,
@@ -256,5 +316,7 @@ export default {
   logoutController,
   getMe,
   updateProfileController,
-  updateRoleController
+  updateRoleController,
+  refreshAccessToken,
+  refreshController,
 };

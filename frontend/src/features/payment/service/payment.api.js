@@ -1,9 +1,6 @@
-import axios from "axios";
+import { createApiClient } from "../../auth/services/api.client";
 
-const api = axios.create({
-  baseURL: "/api",
-  withCredentials: true,
-});
+const api = createApiClient("/api");
 
 export const createRazorpayOrder = async ({
   source,

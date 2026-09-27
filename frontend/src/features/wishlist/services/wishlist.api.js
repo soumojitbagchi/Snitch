@@ -1,16 +1,12 @@
-import axios from "axios";
+import { createApiClient } from "../../auth/services/api.client";
 
-const api = axios.create({
-  baseURL: "/api/product",
-  withCredentials: true,
-});
+const api = createApiClient("/api/product");
 
 export const getWishlist = async () => {
   try {
     const response = await api.get("/get-wishlist");
     return response.data.products ?? [];
   } catch (error) {
-    // The backend currently returns 404 when a user has not saved anything yet.
     if (error.response?.status === 404) return [];
     throw error;
   }

@@ -1,9 +1,6 @@
-import axios from "axios";
+import { createApiClient } from "../../auth/services/api.client";
 
-const api = axios.create({
-    baseURL:"/api/cart",
-    withCredentials:true,
-});
+const api = createApiClient("/api/cart");
 
 export const getCart = async () => {
     const response = await api.get("/");
