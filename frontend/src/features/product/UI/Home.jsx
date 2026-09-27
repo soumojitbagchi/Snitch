@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Navbar from "../../../components/Navbar";
@@ -17,11 +17,35 @@ const CATEGORIES = [
   { label: "Sale", query: "sale" },
 ];
 
+const HERO_IMAGES = [
+  { src: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing olive field jacket and jeans" },
+  { src: "https://images.unsplash.com/photo-1520975954732-35dd22299614?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing white shirt and chinos" },
+  { src: "https://images.unsplash.com/photo-1520975661595-6453be3f7070?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing denim jacket outfit" },
+  { src: "https://images.unsplash.com/photo-1516826957135-700dedea698c?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model in streetwear layered outfit" },
+  { src: "https://images.unsplash.com/photo-1488161628813-04466f872be2?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing casual jacket and tee" },
+  { src: "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing tailored suit" },
+  { src: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=600&h=800&auto=format&fit=crop", alt: "Folded graphic t-shirts collection" },
+  { src: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing plain white tee" },
+  { src: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing printed t-shirt" },
+  { src: "https://images.unsplash.com/photo-1617137968427-85924c800a22?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing black tee and trousers" },
+  { src: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing checked shirt" },
+  { src: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing blazer over shirt" },
+  { src: "https://images.unsplash.com/photo-1603252109303-2751441dd157?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing suit on the street" },
+  { src: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=600&h=800&auto=format&fit=crop", alt: "Rail of shirts in store" },
+  { src: "https://images.unsplash.com/photo-1521341957697-b93449760f30?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing layered casual outfit" },
+  { src: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing formal suit and tie" },
+  { src: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing jacket and scarf" },
+  { src: "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing button-up shirt" },
+  { src: "https://images.unsplash.com/photo-1516257984-b1b4d707412e?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing casual shirt outfit" },
+  { src: "https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=600&h=800&auto=format&fit=crop", alt: "Model wearing coat over shirt" },
+];
+
 function Home() {
 
   const { products, error, loading, fetchProducts } = useProduct();
   const { user } = useSelector(selectAuth);
   const firstName = String(user?.fullname || user?.name || "").trim().split(/\s+/)[0];
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts])
@@ -30,9 +54,9 @@ function Home() {
       <Navbar />
 
       <main className="flex-1">
-        <section aria-labelledby="hero-heading" className="border-b border-neutral-200 bg-neutral-950 text-white">
-          <div className="mx-auto grid w-full max-w-[1400px] gap-8 px-5 py-10 sm:px-8 sm:py-14 lg:grid-cols-2 lg:items-center lg:gap-12">
-            <div>
+        <section aria-labelledby="hero-heading" className="relative overflow-hidden border-b border-neutral-200 bg-neutral-950 text-white">
+          <div className="relative z-20 mx-auto w-full max-w-[1400px] px-5 pb-16 pt-10 sm:px-8 sm:pb-20 sm:pt-14">
+            <div className="hero-fade-in max-w-2xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
                 FW26 — Drop 02
               </p>
@@ -57,23 +81,42 @@ function Home() {
                 </Link>
               </div>
             </div>
-            <div className="relative aspect-[16/10] overflow-hidden bg-neutral-900 lg:aspect-[4/3]">
-              <img
-                src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1400&auto=format&fit=crop"
-                alt="Snitch FW26 menswear editorial"
-                loading="eager"
-                className="absolute inset-0 h-full w-full object-cover object-top grayscale"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" aria-hidden="true" />
+          </div>
+          <div className="hero-marquee-wrap absolute inset-0 overflow-hidden" aria-label="Featured outfits showcase">
+            <div className={`hero-marquee flex h-full w-max ${paused ? "hero-marquee-paused" : ""}`}>
+              {[...HERO_IMAGES, ...HERO_IMAGES].map((img, i) => (
+                <img
+                  key={`${img.src}-${i}`}
+                  src={img.src}
+                  alt={i < HERO_IMAGES.length ? img.alt : ""}
+                  aria-hidden={i >= HERO_IMAGES.length}
+                  loading={i < 4 ? "eager" : "lazy"}
+                  draggable={false}
+                  className="mr-4 aspect-[3/4] h-full w-auto shrink-0 select-none object-cover object-top"
+                />
+              ))}
             </div>
+            <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-r from-neutral-950 via-neutral-950/70 to-neutral-950/30" aria-hidden="true" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-neutral-950 to-transparent" aria-hidden="true" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-neutral-950 to-transparent sm:w-28" aria-hidden="true" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-neutral-950 to-transparent sm:w-28" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => setPaused((p) => !p)}
+              aria-label={paused ? "Play outfits showcase" : "Pause outfits showcase"}
+              aria-pressed={paused}
+              className="absolute bottom-4 right-4 z-30 inline-flex min-h-11 min-w-11 items-center justify-center border border-white/40 text-white transition-colors hover:border-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <span aria-hidden="true">{paused ? "▶" : "❚❚"}</span>
+            </button>
           </div>
         </section>
 
         <section aria-label="Shop by category" className="border-b border-neutral-200 bg-white">
           <nav aria-label="Categories" className="mx-auto w-full max-w-[1400px] px-5 py-6 sm:px-8">
             <ul className="flex flex-wrap gap-2.5">
-              {CATEGORIES.map((item) => (
-                <li key={item.label}>
+              {CATEGORIES.map((item, i) => (
+                <li key={item.label} className="hero-chip" style={{ animationDelay: `${i * 60}ms` }}>
                   <Link
                     to={`/search?q=${encodeURIComponent(item.query)}`}
                     className={`inline-flex min-h-11 items-center justify-center border px-4 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black ${
