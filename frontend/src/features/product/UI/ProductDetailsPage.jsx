@@ -1,55 +1,14 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch } from "react-redux";
+import Navbar from "../../../components/Navbar";
 import useProductDetails from "../hooks/useProductDetails";
 import ProductDetails from "./ProductDetails";
 import AiSuggestions from "./AiSuggestions";
 import ProductDetailsSkeleton from "./ProductDetailsSkeleton";
-import { selectCartCount, setCart } from "../../redux/cart.slice";
+import { setCart } from "../../redux/cart.slice";
 import { addProductToCart } from "../../cart/services/cart.api";
 import { useEffect } from "react";
 import { fetchWishlist } from "../../redux/wishlist.slice";
-
-function StoreHeader() {
-  const cartCount = useSelector(selectCartCount);
-
-  return (
-    <header className="border-b border-neutral-200">
-      <div className="mx-auto flex min-h-16 w-full max-w-[1400px] items-center justify-between gap-5 px-5 sm:px-8">
-        <Link
-          to="/"
-          className="text-lg font-bold uppercase tracking-[0.22em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
-        >
-          Snitch
-        </Link>
-        <div className="flex items-center gap-6">
-          <Link
-            to="/wishlist"
-            className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-neutral-700 underline underline-offset-4 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-          >
-            Wishlist
-          </Link>
-          <Link
-            to="/"
-            className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-neutral-700 underline underline-offset-4 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-          >
-            All products
-          </Link>
-          <Link
-            to="/cart"
-            className="inline-flex min-h-11 items-center gap-1.5 px-2 text-sm font-medium text-neutral-900 transition-colors hover:text-neutral-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-          >
-            <span>Cart</span>
-            {cartCount > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center bg-black px-1 text-[9px] font-bold text-white">
-                {cartCount}
-              </span>
-            )}
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 function ProductError({ error, onRetry }) {
   const notFound = error === "Product not found" || error === "Product not found.";
@@ -109,7 +68,7 @@ export default function ProductDetailsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
-      <StoreHeader />
+      <Navbar />
       <main className="flex-1" aria-busy={loading}>
         {loading ? (
           <ProductDetailsSkeleton />

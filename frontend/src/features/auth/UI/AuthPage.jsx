@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import Signin from "./Signin";
 import Signup from "./Signup";
-import StoreHeader from "./StoreHeader";
+import Navbar from "../../../components/Navbar";
 import StoreFooter from "./StoreFooter";
 
 function GoogleIcon() {
@@ -35,7 +35,7 @@ export default function AuthPage({ initialMode = "signin" }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-neutral-900">
-      <StoreHeader />
+      <Navbar />
 
       <main className="grid flex-1 grid-cols-1 lg:grid-cols-[1.1fr_1fr]">
         {/* Editorial panel */}
