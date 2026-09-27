@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { mockProducts } from "./mockProducts";
 import { formatPrice } from "../utils/product";
 import WishlistToggleButton from "../../wishlist/UI/WishlistToggleButton";
+import SizeGuideModal from "./SizeGuideModal";
+import OutOfStockRecovery from "./OutOfStockRecovery";
 
 function BagIcon() {
   return (
@@ -232,9 +234,14 @@ export function VariantSelector({
   onSelectVariant,
   quantity = 1,
   onChangeQuantity,
+  category = "",
 }) {
   const activeVariant = variants[selectedVariantIndex] || variants[0];
-  const maxStock = typeof activeVariant?.stock === "number" ? activeVariant.stock : (activeVariant?.stock?.basePrice ?? 99);
+  const maxStock =
+    typeof activeVariant?.stock === "number"
+      ? activeVariant.stock
+      : (activeVariant?.stock?.basePrice ?? 99);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
   const sizes = useMemo(() => {
     return variants.map((v, idx) => {
@@ -271,10 +278,20 @@ export function VariantSelector({
             <span className="font-semibold uppercase tracking-[0.14em] text-neutral-600">
               Select Size
             </span>
-            <span className="text-neutral-500 underline cursor-pointer hover:text-black">
+            <button
+              type="button"
+              onClick={() => setSizeGuideOpen(true)}
+              aria-haspopup="dialog"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-neutral-500 underline underline-offset-4 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+            >
               Size Guide
-            </span>
+            </button>
           </div>
+          <SizeGuideModal
+            open={sizeGuideOpen}
+            onClose={() => setSizeGuideOpen(false)}
+            category={category}
+          />
 
           <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Product size">
             {sizes.map(({ size, index, inStock }) => {
@@ -313,7 +330,7 @@ export function VariantSelector({
             aria-label="Decrease quantity"
             disabled={quantity <= 1}
             onClick={() => onChangeQuantity(Math.max(1, quantity - 1))}
-            className="flex h-9 w-9 items-center justify-center text-neutral-700 transition-colors hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent"
+            className="flex h-11 w-11 items-center justify-center text-neutral-700 transition-colors hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent"
           >
             -
           </button>
@@ -325,7 +342,7 @@ export function VariantSelector({
             aria-label="Increase quantity"
             disabled={quantity >= maxStock}
             onClick={() => onChangeQuantity(quantity + 1)}
-            className="flex h-9 w-9 items-center justify-center text-neutral-700 transition-colors hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent"
+            className="flex h-11 w-11 items-center justify-center text-neutral-700 transition-colors hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent"
           >
             +
           </button>
@@ -564,6 +581,7 @@ export default function ProductDetails({
             onSelectVariant={setSelectedVariantIndex}
             quantity={quantity}
             onChangeQuantity={setQuantity}
+            category={product.category}
           />
 
           <ProductActions
@@ -572,6 +590,15 @@ export default function ProductDetails({
             isOutOfStock={isOutOfStock}
             addedFeedback={addedFeedback}
           />
+
+          {isOutOfStock && (
+            <OutOfStockRecovery
+              product={product}
+              activeVariant={activeVariant}
+              variants={variants}
+              onSelectVariant={setSelectedVariantIndex}
+            />
+          )}
 
           <ProductAccordion description={product.description} />
         </div>
