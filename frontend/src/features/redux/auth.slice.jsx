@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { clearProductCache } from "../product/services/product.cache";
 
 const FORMS = {
   signin: { email: "", password: "" },
@@ -103,6 +104,7 @@ const authSlice = createSlice({
       state.done = false;
       state.errors = {};
       state.serverError = "";
+      clearProductCache();
     },
   },
 });

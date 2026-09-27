@@ -6,14 +6,28 @@ import {
   selectProductLoading,
   selectProductError,
   selectProductSuccess,
+  selectLastFetchedAt,
+  selectLastDetailsAt,
   setProducts,
   setLoading,
   setError,
   setSuccess,
+  setSelectedProduct,
   upsertProduct,
   removeProduct,
   clearProductStatus,
+  invalidateProductCache,
 } from "../../redux/product.slice";
+import {
+  LIST_TTL_MS,
+  DETAILS_TTL_MS,
+  isFresh,
+  readProductsAll,
+  writeProductsAll,
+  readProductDetails,
+  writeProductDetails,
+  clearProductCache,
+} from "../services/product.cache";
 import {
   fetchMyProducts,
   createProduct as createProductApi,
@@ -33,12 +47,25 @@ export const useProduct = () => {
   const loading = useSelector(selectProductLoading);
   const error = useSelector(selectProductError);
   const success = useSelector(selectProductSuccess);
+  const lastFetchedAt = useSelector(selectLastFetchedAt);
+  const lastDetailsAt = useSelector(selectLastDetailsAt);
 
   const [pendingDelete, setPendingDelete] = useState(null);
   const [busyIds, setBusyIds] = useState({});
   const [itemErrors, setItemErrors] = useState({});
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (options) => {
+    const force = options === true || options?.force === true;
+    if (!force && products.length > 0 && isFresh(lastFetchedAt, LIST_TTL_MS)) {
+      return { ok: true, products, cached: true };
+    }
+    if (!force) {
+      const entry = readProductsAll();
+      if (entry && isFresh(entry.ts, LIST_TTL_MS) && Array.isArray(entry.data)) {
+        dispatch(setProducts(entry.data));
+        return { ok: true, products: entry.data, cached: true };
+      }
+    }
     dispatch(setLoading(true));
     dispatch(setError(null));
 
@@ -53,6 +80,7 @@ export const useProduct = () => {
       }
 
       dispatch(setProducts(fetchedProducts));
+      writeProductsAll(fetchedProducts);
       return { ok: true, products: fetchedProducts };
     } catch (err) {
       const message = productError(err, "Failed to load products.");
@@ -61,7 +89,7 @@ export const useProduct = () => {
     } finally {
       dispatch(setLoading(false));
     }
-  }, [dispatch]);
+  }, [dispatch, products, lastFetchedAt]);
 
   const fetchSellerProducts = useCallback(async (signal) => {
     dispatch(setLoading(true));
@@ -75,6 +103,7 @@ export const useProduct = () => {
       }
 
       dispatch(setProducts(fetchedProducts));
+      dispatch(invalidateProductCache());
       return { ok: true, products: fetchedProducts };
     } catch (err) {
       if (signal?.aborted || err?.code === "ERR_CANCELED") {
@@ -103,6 +132,8 @@ export const useProduct = () => {
 
       dispatch(upsertProduct(product));
       dispatch(setSuccess(response?.message ?? "Product created successfully."));
+      clearProductCache();
+      dispatch(invalidateProductCache());
       return { ok: true, product };
     } catch (err) {
       const message = productError(err, "Failed to create product.");
@@ -126,6 +157,8 @@ export const useProduct = () => {
       }
 
       dispatch(upsertProduct(product));
+      clearProductCache(productId);
+      dispatch(invalidateProductCache(productId));
       return { ok: true, product };
     } catch (err) {
       const message = productError(err, fallbackMessage);
@@ -171,6 +204,8 @@ export const useProduct = () => {
     try {
       await deleteProductApi(productId);
       dispatch(removeProduct(productId));
+      clearProductCache(productId);
+      dispatch(invalidateProductCache(productId));
       setPendingDelete(null);
       return { ok: true };
     } catch (err) {
@@ -186,15 +221,34 @@ export const useProduct = () => {
     }
   }, [dispatch]);
 
-  const getProductData = useCallback(async (productId, signal) => {
+  const getProductData = useCallback(async (productId, signal, options) => {
+    const force = options === true || options?.force === true;
+    if (!force && productId) {
+      if (isFresh(lastDetailsAt?.[productId], DETAILS_TTL_MS)) {
+        const entry = readProductDetails(productId);
+        if (entry && entry.data && typeof entry.data === "object") {
+          return { success: true, data: entry.data };
+        }
+      } else {
+        const entry = readProductDetails(productId);
+        if (entry && isFresh(entry.ts, DETAILS_TTL_MS) && entry.data && typeof entry.data === "object") {
+          dispatch(setSelectedProduct(entry.data));
+          return { success: true, data: entry.data };
+        }
+      }
+    }
     try {
       const response = await productDataApi(productId, signal);
+      if (response?.success && response?.data && typeof response.data === "object") {
+        dispatch(setSelectedProduct(response.data));
+        writeProductDetails(productId, response.data);
+      }
       return response;
     } catch (err) {
       const message = productError(err, "Failed to get product data.");
       return { ok: false, error: message };
     }
-  }, []);
+  }, [dispatch, lastDetailsAt]);
 
   const requestDelete = useCallback((product) => {
     setPendingDelete(product);

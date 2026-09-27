@@ -6,6 +6,8 @@ const initialState = {
   loading: false,
   error: null,
   success: null,
+  lastFetchedAt: null,
+  lastDetailsAt: {},
 };
 
 const productSlice = createSlice({
@@ -14,6 +16,7 @@ const productSlice = createSlice({
   reducers: {
     setProducts: (state, action) => {
       state.products = action.payload ?? [];
+      state.lastFetchedAt = Date.now();
     },
 
     upsertProduct: (state, action) => {
@@ -34,6 +37,9 @@ const productSlice = createSlice({
 
     setSelectedProduct: (state, action) => {
       state.selectedProduct = action.payload ?? null;
+      if (action.payload?._id) {
+        state.lastDetailsAt[action.payload._id] = Date.now();
+      }
     },
 
     setLoading: (state, action) => {
@@ -51,6 +57,15 @@ const productSlice = createSlice({
     clearProductStatus: (state) => {
       state.error = null;
       state.success = null;
+    },
+
+    invalidateProductCache: (state, action) => {
+      state.lastFetchedAt = null;
+      if (action.payload) {
+        delete state.lastDetailsAt[action.payload];
+      } else {
+        state.lastDetailsAt = {};
+      }
     },
 
     setCreating: (state, action) => {
@@ -72,6 +87,7 @@ export const {
   setError,
   setSuccess,
   clearProductStatus,
+  invalidateProductCache,
   setCreating,
   setUpdating,
   setDeleting,
@@ -83,6 +99,8 @@ export const selectProduct = (state) => state.product.selectedProduct;
 export const selectProductLoading = (state) => state.product.loading;
 export const selectProductError = (state) => state.product.error;
 export const selectProductSuccess = (state) => state.product.success;
+export const selectLastFetchedAt = (state) => state.product.lastFetchedAt;
+export const selectLastDetailsAt = (state) => state.product.lastDetailsAt;
 
 export const selectProductCreating = (state) => state.product.loading;
 export const selectProductUpdating = () => ({});
