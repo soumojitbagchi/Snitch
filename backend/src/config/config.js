@@ -64,6 +64,18 @@ if(!process.env.OPENROUTER_MODEL){
 if(!process.env.JWT_SESSION_KEY){
     throw new Error("session jwt isnt defined")
 }
+if(!process.env.REDIS_PORT){
+    throw new Error("redis port isnt defined")
+}
+if(!process.env.REDIS_PASSWORD){
+    throw new Error("redis password isnt defined")
+}
+if(!process.env.REDIS_HOST){
+    throw new Error("redis host isnt defined")
+}
+if(!process.env.REDIS_USER){
+    throw new Error("redis user isnt defined")
+}
 export const config={
     MONGO_URI:process.env.MONGO_URI,
     JWT_KEY:process.env.JWT_KEY,
@@ -82,4 +94,8 @@ export const config={
     OPENROUTER_API_KEY:process.env.OPENROUTER_API_KEY,
     OPENROUTER_MODEL:process.env.OPENROUTER_MODEL,
     JWT_SESSION_KEY:process.env.JWT_SESSION_KEY,
+    REDIS_PASSWORD:process.env.REDIS_PASSWORD,
+    REDIS_HOST:process.env.REDIS_HOST,
+    REDIS_PORT:process.env.REDIS_PORT,
+    REDIS_USER:process.env.REDIS_USER,
 }

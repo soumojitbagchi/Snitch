@@ -21,10 +21,23 @@ import multer from 'multer'
 
 const productRouter = Router();
 
+const fileFilter = (req, file, cb) => {
+    const allowedFile = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+    ];
+    if (!allowedFile.includes(file.mimetype)) {
+        return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+}
+
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
-
+    fileFilter: fileFilter,
 })
 
 
@@ -33,7 +46,7 @@ productRouter.put("/update-image/:id", authMiddleware, upload.array('images', 5)
 productRouter.put("/update-price/:id", authMiddleware, upload.none(), updatePriceInfo);
 productRouter.put("/update-title/:id", authMiddleware, upload.none(), updateTitle);
 productRouter.put("/update-description/:id", authMiddleware, upload.none(), updateDescription);
-productRouter.get("/details/:productId", authenticate, detailsProduct);
+productRouter.get("/details/:productId", detailsProduct);
 productRouter.post("/add-wishlist", authenticate, addToWishlistController);
 productRouter.get("/get-wishlist", authenticate, viewProductsWishlistController);
 productRouter.delete("/remove-wishlist", authenticate, removeFromWishlistController);

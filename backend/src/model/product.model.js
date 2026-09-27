@@ -45,11 +45,20 @@ const productSchema = mongoose.Schema({
                 of: String
             }
         }
-    ]
-
+    ],
+    category:{
+        type: String,
+        index:true,
+        default: '',
+    },
+    tags:{
+        type:[String],
+        default:[]
+    }
 }, {
     timestamps: true
 })
+productSchema.index({title:'text', description:'text', category:'text'})
 
 const Product = mongoose.model('Product', productSchema)
 
