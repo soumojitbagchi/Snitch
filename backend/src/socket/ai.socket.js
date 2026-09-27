@@ -26,8 +26,11 @@ const getUserId = async (socket) => {
 };
 
 export const attachAiSocket = (httpServer) => {
+  const socketOrigins = [config.CLIENT_URL, config.BACKEND_URL].filter(
+    (origin, index, all) => origin && all.indexOf(origin) === index,
+  );
   const io = new Server(httpServer, {
-    cors: { origin: config.CLIENT_URL, credentials: true },
+    cors: { origin: socketOrigins, credentials: true },
   });
 
   io.on("connection", (socket) => {

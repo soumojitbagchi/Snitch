@@ -14,11 +14,17 @@ import CartRouter from "../routes/cart.route.js";
 
 const app = express();
 
+// Required on Render (behind a proxy) for Secure cross-site cookies.
+app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(morgan("dev"));
+const allowedOrigins = [config.CLIENT_URL, config.BACKEND_URL].filter(
+  (origin, index, all) => origin && all.indexOf(origin) === index,
+);
 app.use(
   cors({
-    origin: config.CLIENT_URL,
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
@@ -28,7 +34,8 @@ passport.use(
     {
       clientID: config.GOOGLE_AUTH_CLIENT_ID,
       clientSecret: config.GOOGLE_AUTH_SECRET_KEY,
-      callbackURL: `${config.CLIENT_URL}/api/auth/google/callback`,
+      // OAuth callback must hit the backend, not the frontend.
+      callbackURL: `${config.BACKEND_URL}/api/auth/google/callback`,
     },
     authController.googleVerifyCallback,
   ),

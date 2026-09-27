@@ -1,5 +1,11 @@
 import axios from "axios";
 
+// Absolute backend origin in production (Render), same-origin in dev via vite proxy.
+// Set VITE_API_URL=https://<backend>.onrender.com in the Render Static Site env.
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+
+const joinUrl = (path) => `${API_BASE_URL}${path}`;
+
 export const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
 export const ACCESS_TOKEN_REFRESH_INTERVAL_MS =
   ACCESS_TOKEN_TTL_MS - 5 * 60 * 1000;
@@ -9,7 +15,7 @@ let inflightRefresh = null;
 export const refreshAccessTokenRequest = async () => {
   if (!inflightRefresh) {
     inflightRefresh = axios
-      .get("/api/auth/refresh", { withCredentials: true })
+      .get(joinUrl("/api/auth/refresh"), { withCredentials: true })
       .then((res) => res.data)
       .finally(() => {
         inflightRefresh = null;
@@ -25,7 +31,7 @@ const isAuthUrl = (url = "") =>
   isRefreshUrl(url);
 
 export const createApiClient = (baseURL) => {
-  const client = axios.create({ baseURL, withCredentials: true });
+  const client = axios.create({ baseURL: joinUrl(baseURL), withCredentials: true });
 
   client.interceptors.response.use(
     (response) => response,

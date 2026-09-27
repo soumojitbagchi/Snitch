@@ -64,23 +64,30 @@ if(!process.env.OPENROUTER_MODEL){
 if(!process.env.JWT_SESSION_KEY){
     throw new Error("session jwt isnt defined")
 }
-if(!process.env.REDIS_PORT){
-    throw new Error("redis port isnt defined")
-}
-if(!process.env.REDIS_PASSWORD){
-    throw new Error("redis password isnt defined")
-}
-if(!process.env.REDIS_HOST){
-    throw new Error("redis host isnt defined")
-}
-if(!process.env.REDIS_USER){
-    throw new Error("redis user isnt defined")
+// Managed Redis (Render/Upstash) provides a single REDIS_URL (rediss://...).
+// Self-hosted setups can use the split HOST/PORT/USER/PASSWORD vars instead.
+if(!process.env.REDIS_URL){
+    if(!process.env.REDIS_PORT){
+        throw new Error("redis port isnt defined (or set REDIS_URL)")
+    }
+    if(!process.env.REDIS_PASSWORD){
+        throw new Error("redis password isnt defined (or set REDIS_URL)")
+    }
+    if(!process.env.REDIS_HOST){
+        throw new Error("redis host isnt defined (or set REDIS_URL)")
+    }
+    if(!process.env.REDIS_USER){
+        throw new Error("redis user isnt defined (or set REDIS_URL)")
+    }
 }
 export const config={
     MONGO_URI:process.env.MONGO_URI,
     JWT_KEY:process.env.JWT_KEY,
     PORT:process.env.PORT,
     CLIENT_URL:process.env.CLIENT_URL,
+    // Public backend origin (used for OAuth callbacks). Falls back to
+    // CLIENT_URL for local dev where frontend proxy hits the same host.
+    BACKEND_URL:process.env.BACKEND_URL || process.env.CLIENT_URL,
     GOOGLE_AUTH_CLIENT_ID:process.env.GOOGLE_AUTH_CLIENT_ID,
     GOOGLE_AUTH_SECRET_KEY:process.env.GOOGLE_AUTH_SECRET_KEY,
     IMAGEKIT_PRIVATE_KEY:process.env.IMAGEKIT_PRIVATE_KEY,
@@ -94,6 +101,7 @@ export const config={
     OPENROUTER_API_KEY:process.env.OPENROUTER_API_KEY,
     OPENROUTER_MODEL:process.env.OPENROUTER_MODEL,
     JWT_SESSION_KEY:process.env.JWT_SESSION_KEY,
+    REDIS_URL:process.env.REDIS_URL || "",
     REDIS_PASSWORD:process.env.REDIS_PASSWORD,
     REDIS_HOST:process.env.REDIS_HOST,
     REDIS_PORT:process.env.REDIS_PORT,

@@ -23,11 +23,16 @@ const issueRefreshToken = (user) => {
   })
 }
 
+// Cross-site (frontend + backend on different Render domains) requires
+// SameSite=None + Secure in production; same-site dev stays Lax.
+const isProd = process.env.NODE_ENV === "production";
+const cookieSameSite = isProd ? "none" : "lax";
+
 const setAccessTokenCookie = (res, token) => {
   res.cookie("accessToken", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: cookieSameSite,
     maxAge: 60 * 60 * 1000,
     path: "/",
   });
@@ -35,9 +40,9 @@ const setAccessTokenCookie = (res, token) => {
 const setRefreshTokenCookie = (res,token) =>{
   res.cookie("refreshToken",token,{
     httpOnly: true,
-    secure: process.env.NODE_ENV==="production",
+    secure: isProd,
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    sameSite: "lax",
+    sameSite: cookieSameSite,
     path: "/",
   })
 }
@@ -45,8 +50,8 @@ const setRefreshTokenCookie = (res,token) =>{
 const clearAuthCookies = (res) => {
   const opts = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: cookieSameSite,
     path: "/",
   };
   res.clearCookie("accessToken", opts);

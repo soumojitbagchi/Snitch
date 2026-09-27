@@ -4,6 +4,7 @@ frontend/src/routes.jsx
 work.txt
 *.md
 *.example
+!**/.env.example
 *.spec.js
 *.spec.jsx
 *.webp

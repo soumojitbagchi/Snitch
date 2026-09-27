@@ -1,0 +1,69 @@
+# Render Blueprint — Snitch (backend API + frontend static site)
+# Deploy via Dashboard → New → Blueprint → select this repo.
+# Fill every `sync: false` value in the dashboard on first deploy.
+
+services:
+  - type: web
+    name: snitch-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_KEY
+        sync: false
+      - key: JWT_SESSION_KEY
+        sync: false
+      - key: CLIENT_URL
+        sync: false # e.g. https://snitch-frontend.onrender.com
+      - key: BACKEND_URL
+        sync: false # e.g. https://snitch-backend.onrender.com
+      - key: GOOGLE_AUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_AUTH_SECRET_KEY
+        sync: false
+      - key: GOOGLE_USER
+        sync: false
+      - key: GOOGLE_AUTH_APP_PASSWORD
+        sync: false
+      - key: IMAGEKIT_PRIVATE_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RATE_EXCHANGE
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: MISTRAL_MODEL
+        value: mistral-small-latest
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        sync: false
+      # Managed Redis (Render Key Value): create one and paste its
+      # External Connection String here. Leave split vars empty.
+      - key: REDIS_URL
+        sync: false
+
+  - type: web
+    name: snitch-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false # e.g. https://snitch-backend.onrender.com
+      - key: VITE_SOCKET_URL
+        sync: false # same as VITE_API_URL; optional
