@@ -1,7 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ProductCard from "./ProductCard";
+import CatalogFilters from "./CatalogFilters";
 import { variantPriceRange } from "../utils/product";
+import {
+  EMPTY_FILTERS,
+  countActiveFilters,
+  filterProducts,
+  getCatalogFacets,
+} from "../utils/catalogFilters";
 
 function CatalogSkeleton() {
   return (
@@ -30,13 +37,18 @@ export default function ShopGrid({
   title = "Products",
 }) {
   const [sort, setSort] = useState("featured");
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const list = useMemo(() => (Array.isArray(products) ? products : []), [products]);
+  const facets = useMemo(() => getCatalogFacets(list), [list]);
+  const activeFilterCount = countActiveFilters(filters);
+  const filtered = useMemo(() => filterProducts(list, filters), [list, filters]);
   const currencies = new Set(
-    products
+    filtered
       .map((product) => variantPriceRange(product)?.currency)
       .filter(Boolean)
   );
   const canSortPrice = currencies.size <= 1;
-  const sorted = [...products];
+  const sorted = [...filtered];
 
   if (canSortPrice && sort !== "featured") {
     sorted.sort((firstProduct, secondProduct) => {
@@ -52,25 +64,38 @@ export default function ShopGrid({
     });
   }
 
+  const handleToggleFilter = (group, value) => {
+    setFilters((prev) => {
+      const current = Array.isArray(prev[group]) ? prev[group] : [];
+      const exists = current.includes(value);
+      return {
+        ...prev,
+        [group]: exists ? current.filter((v) => v !== value) : [...current, value],
+      };
+    });
+  };
+
+  const handleClearFilters = () => setFilters(EMPTY_FILTERS);
+
   return (
     <section
       id="products"
       aria-label="Products"
       className="mx-auto w-full max-w-[1400px] px-5 pb-12 pt-8 sm:px-8 sm:pb-16"
     >
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-neutral-200 pb-5">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-neutral-200 pb-5">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          {!error && (
+          {!error && activeFilterCount === 0 && (
             <p className="mt-2 text-sm text-neutral-600">
               {loading
                 ? "Loading products…"
-                : `${products.length} product${products.length === 1 ? "" : "s"}`}
+                : `${list.length} product${list.length === 1 ? "" : "s"}`}
             </p>
           )}
         </div>
 
-        {!loading && !error && products.length > 1 && canSortPrice && (
+        {!loading && !error && filtered.length > 1 && canSortPrice && (
           <div className="flex min-h-11 items-center gap-3">
             <label
               htmlFor="product-sort"
@@ -119,7 +144,7 @@ export default function ShopGrid({
             </Link>
           </div>
         </div>
-      ) : products.length === 0 ? (
+      ) : list.length === 0 ? (
         <div className="border border-dashed border-neutral-300 px-6 py-16 text-center sm:py-20">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-600">
             New season
@@ -130,10 +155,41 @@ export default function ShopGrid({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-3 md:gap-x-5 xl:grid-cols-4 xl:gap-x-6">
-          {sorted.map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
+        <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+          <CatalogFilters
+            facets={facets}
+            filters={filters}
+            onToggle={handleToggleFilter}
+            onClear={handleClearFilters}
+            resultCount={filtered.length}
+            totalCount={list.length}
+          />
+          <div className="min-w-0">
+            {sorted.length === 0 ? (
+              <div className="border border-dashed border-neutral-300 px-6 py-16 text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-600">
+                  No matches
+                </p>
+                <h2 className="mt-2 text-xl font-semibold">No products match these filters</h2>
+                <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-neutral-600">
+                  Try removing a filter or broadening the price range.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="mt-6 inline-flex min-h-11 items-center justify-center bg-black px-5 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                >
+                  Clear all filters ({activeFilterCount})
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-3 md:gap-x-5 xl:grid-cols-3 2xl:grid-cols-4">
+                {sorted.map((product) => (
+                  <ProductCard key={product._id} product={product} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </section>
