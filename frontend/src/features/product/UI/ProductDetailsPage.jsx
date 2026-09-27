@@ -91,7 +91,7 @@ export default function ProductDetailsPage() {
               onBuyNow={handleBuyNow}
               className="pt-2"
             />
-            <AiSuggestions productId={id} />
+            <AiSuggestions productId={id} product={product} />
           </>
         )}
       </main>

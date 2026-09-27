@@ -1,4 +1,4 @@
-import useAiSuggestions from "../hooks/useAiSuggestions";
+import useAiSuggestions from "../hooks/useAiSuggestionsSocket";
 import ProductCard from "./ProductCard";
 
 function SuggestionSkeleton() {
@@ -19,32 +19,34 @@ function SuggestionSkeleton() {
   );
 }
 
-export default function AiSuggestions({ productId }) {
-  const { items, loading, error, retry } = useAiSuggestions(productId);
+export default function AiSuggestions({ productId, product }) {
+  const { items, loading, error, retry, isAi } = useAiSuggestions(productId, product);
 
   // Nothing to show (guest, quota 503, or empty) — keep the page clean.
   if (!loading && !error && items.length === 0) return null;
 
   return (
     <section
-      aria-label="Recommended for you"
+      aria-label={isAi ? "Recommended for you" : "Similar picks"}
       className="mx-auto w-full max-w-[1240px] px-4 pb-12 sm:px-6 lg:px-8"
     >
       <div className="mb-6 border-t border-neutral-200 pt-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-          Recommended for you
+          {isAi ? "Recommended for you" : "Similar picks"}
         </p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">
           You may also like
         </h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-600">
-          Picked from your orders, wishlist and the product you are viewing.
+          {isAi
+            ? "Picked from your orders, wishlist and the product you are viewing."
+            : "Similar styles you may also like."}
         </p>
       </div>
 
-      {loading ? (
+      {loading && items.length === 0 ? (
         <SuggestionSkeleton />
-      ) : error ? (
+      ) : error && items.length === 0 ? (
         <div className="flex flex-wrap items-center gap-4 border border-neutral-200 bg-neutral-50 px-5 py-5">
           <p role="alert" className="text-sm text-neutral-600">
             {error}
@@ -62,6 +64,13 @@ export default function AiSuggestions({ productId }) {
           {items.map((item) => (
             <ProductCard key={item._id} product={item} />
           ))}
+          {loading &&
+            Array.from({ length: Math.max(0, 4 - items.length) }, (_, i) => (
+              <div key={`s-${i}`} aria-hidden="true">
+                <div className="aspect-[3/4] animate-pulse bg-neutral-100" />
+                <div className="mt-3 h-4 w-4/5 animate-pulse bg-neutral-100" />
+              </div>
+            ))}
         </div>
       )}
     </section>
