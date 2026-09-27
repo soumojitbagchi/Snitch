@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Cart from "../model/cart.model.js";
 import Product from "../model/product.model.js";
 import Coupon from "../model/coupon.model.js";
+import { exchangeRate } from "./currencyConverter.service.js";
 
 const checkoutError = (status, message) => Object.assign(new Error(message), { status });
 
@@ -60,13 +61,14 @@ export const getCheckoutItems = async ({ source, items, userId }) => {
 
     if (source !== "direct") throw checkoutError(400, "Invalid checkout source");
     validateItems(items);
-    return items;
+    return { items, currency: null };
 };
 
 export const calculateCheckoutTotal = async ({ items, currency, couponCode } = {}) => {
     validateItems(items);
 
     let total = 0;
+    let checkoutCurrency = currency || null;
     const verifiedItems = [];
 
     for (const item of items) {
@@ -85,7 +87,11 @@ export const calculateCheckoutTotal = async ({ items, currency, couponCode } = {
         if (!variant) throw checkoutError(400, "Variant does not belong to this product");
         if (variant.stock < quantity) throw checkoutError(400, "Requested quantity exceeds available stock");
 
-        const unitPrice = variant.price.basePrice;
+        if (!checkoutCurrency) checkoutCurrency = variant.price.currency;
+        if (!currency && variant.price.currency !== checkoutCurrency) {
+            throw checkoutError(400, "All direct checkout items must use the same currency");
+        }
+        const unitPrice = variant.price.basePrice * await exchangeRate(variant.price.currency, checkoutCurrency);
         const lineTotal = unitPrice * quantity;
         total += lineTotal;
         // Snapshot display fields backend-side so the confirmation email /
@@ -98,7 +104,7 @@ export const calculateCheckoutTotal = async ({ items, currency, couponCode } = {
             quantity,
             unitPrice,
             lineTotal,
-            currency,
+            currency: checkoutCurrency,
             title: product.title,
             image: variant.images?.[0]?.url || product.images?.[0]?.url || "",
             size: attrs?.get?.("size") ?? attrs?.size ?? "",
@@ -120,19 +126,31 @@ export const calculateCheckoutTotal = async ({ items, currency, couponCode } = {
         discount,
         payable: Math.max(0, total - discount),
         coupon: coupon ? coupon.coupon : null,
-        currency,
+        currency: checkoutCurrency,
     };
 };
 
 export const reCalculateStock = async (items) => {
-    const productDetails = await Product.find({ _id: { $in: items.map((item) => item.productId) } }).select("variant");
-    for (const product of productDetails) {
-        const variant = product.variant.id(items.find((item) => item.productId === product._id).variantId);
-        if (variant.stock - items.find((item) => item.productId === product._id).quantity < 0) {
+    const quantities = new Map();
+    for (const item of items) {
+        const key = `${item.productId}:${item.variantId}`;
+        const existing = quantities.get(key);
+        if (existing) existing.quantity += item.quantity;
+        else quantities.set(key, {
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+        });
+    }
+
+    for (const { productId, variantId, quantity } of quantities.values()) {
+        const result = await Product.updateOne(
+            { _id: productId, variant: { $elemMatch: { _id: variantId, stock: { $gte: quantity } } } },
+            { $inc: { "variant.$.stock": -quantity } },
+        );
+        if (result.modifiedCount !== 1) {
             throw checkoutError(400, "Requested quantity exceeds available stock");
         }
-        variant.stock -= items.find((item) => item.productId === product._id).quantity;
-        await variant.save();
     }
     return true;
 };
