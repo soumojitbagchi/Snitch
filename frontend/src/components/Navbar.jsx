@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { selectAuth, logout } from "../features/redux/auth.slice";
 import { selectCartCount } from "../features/redux/cart.slice";
 import { logout as logoutRequest } from "../features/auth/services/auth.api";
+import { searchProducts } from "../features/product/services/product.api";
 import {
   clearWishlist,
   fetchWishlist,
@@ -55,15 +56,44 @@ function getInitials(name) {
     .join("");
 }
 
+const SEARCH_CATEGORIES = [
+  "New Arrivals",
+  "Bestsellers",
+  "Shirts",
+  "T-Shirts",
+  "Jeans",
+  "Cargos",
+  "Hoodies",
+  "Sale",
+];
+
+const RECENT_KEY = "snitch:recent-searches";
+
+function readRecentSearches() {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    const parsed = JSON.parse(raw || "[]");
+    return Array.isArray(parsed) ? parsed.filter((s) => typeof s === "string").slice(0, 5) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function Navbar({ onSearch = null }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const accountMenuRef = useRef(null);
+  const searchWrapRef = useRef(null);
   const { user } = useSelector(selectAuth);
   const cartCount = useSelector(selectCartCount);
   const wishlistCount = useSelector(selectWishlistCount);
   const [searchQuery, setSearchQuery] = useState("");
   const [accountOpen, setAccountOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [suggestionProducts, setSuggestionProducts] = useState([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [recentSearches, setRecentSearches] = useState(() => readRecentSearches());
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
 
   const isAuthenticated = Boolean(user);
   const displayName = user?.fullname || user?.name || "Guest account";
@@ -89,18 +119,113 @@ export default function Navbar({ onSearch = null }) {
     };
   }, []);
 
-  const handleSearchSubmit = (event) => {
-    event.preventDefault();
+  const saveRecentSearch = (query) => {
+    const clean = String(query || "").trim();
+    if (!clean) return;
+    setRecentSearches((prev) => {
+      const next = [clean, ...prev.filter((s) => s.toLowerCase() !== clean.toLowerCase())].slice(0, 5);
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      } catch {
+        // storage unavailable (private mode) — suggestions still work for this session
+      }
+      return next;
+    });
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    // Reset suggestion state in the event handler (not the effect) so short
+    // queries clear stale results without a cascading render.
+    if (value.trim().length < 2) {
+      setSuggestionProducts([]);
+      setSuggestionsLoading(false);
+      setActiveSuggestion(-1);
+    }
+  };
+
+  useEffect(() => {
     const query = searchQuery.trim();
+    if (query.length < 2) return undefined;
+
+    // All state updates happen inside the debounced callback (async system
+    // boundary), keeping the effect body free of synchronous setState.
+    const timer = setTimeout(async () => {
+      setSuggestionsLoading(true);
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const response = await searchProducts(query, controller.signal);
+        clearTimeout(timeout);
+        const items = Array.isArray(response?.data) ? response.data.slice(0, 5) : [];
+        setSuggestionProducts(items);
+      } catch {
+        setSuggestionProducts([]);
+      } finally {
+        setSuggestionsLoading(false);
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!searchWrapRef.current?.contains(event.target)) setSearchFocused(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
+  const matchingCategories = searchQuery.trim()
+    ? SEARCH_CATEGORIES.filter((c) =>
+        c.toLowerCase().includes(searchQuery.trim().toLowerCase())
+      ).slice(0, 4)
+    : [];
+  const visibleRecents =
+    recentSearches.length > 0
+      ? recentSearches
+          .filter((s) =>
+            searchQuery.trim()
+              ? s.toLowerCase().includes(searchQuery.trim().toLowerCase())
+              : true
+          )
+          .slice(0, 5)
+      : [];
+  const showDropdown =
+    searchFocused &&
+    (matchingCategories.length > 0 ||
+      suggestionProducts.length > 0 ||
+      suggestionsLoading ||
+      visibleRecents.length > 0);
+
+  const goToSearch = (query) => {
+    const clean = String(query || "").trim();
+    saveRecentSearch(clean);
+    setSearchFocused(false);
+    setActiveSuggestion(-1);
     if (onSearch) {
-      onSearch(query);
+      onSearch(clean);
       return;
     }
-    navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/");
+    navigate(clean ? `/search?q=${encodeURIComponent(clean)}` : "/");
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    if (activeSuggestion >= 0 && suggestionProducts[activeSuggestion]) {
+      const product = suggestionProducts[activeSuggestion];
+      saveRecentSearch(product.title);
+      setSearchFocused(false);
+      navigate(`/product/${product._id}`);
+      return;
+    }
+    goToSearch(searchQuery);
   };
 
   const handleClearSearch = () => {
     setSearchQuery("");
+    setSuggestionProducts([]);
     if (onSearch) {
       onSearch("");
       return;
@@ -132,29 +257,171 @@ export default function Navbar({ onSearch = null }) {
           Snitch
         </Link>
 
-        <form onSubmit={handleSearchSubmit} className="relative mx-1 min-w-0 max-w-lg flex-1 sm:mx-2">
-          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 sm:left-3.5">
-            <SearchIcon />
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search shirts, oversized, cargos..."
-            aria-label="Search products"
-            className="h-9 w-full min-w-0 border border-neutral-200 bg-neutral-50 pl-8 pr-8 text-xs text-neutral-900 placeholder:text-neutral-400 transition-colors focus:border-black focus:bg-white focus-visible:outline-2 focus-visible:outline-black sm:h-10 sm:pl-10"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black"
-              aria-label="Clear search"
+        <div ref={searchWrapRef} className="relative mx-1 min-w-0 max-w-lg flex-1 sm:mx-2">
+          <form onSubmit={handleSearchSubmit} role="search">
+            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 sm:left-3.5">
+              <SearchIcon />
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => handleSearchChange(event.target.value)}
+              onFocus={() => {
+                setSearchFocused(true);
+                setRecentSearches(readRecentSearches());
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" && suggestionProducts.length > 0) {
+                  event.preventDefault();
+                  setActiveSuggestion((prev) =>
+                    prev < suggestionProducts.length - 1 ? prev + 1 : 0
+                  );
+                } else if (event.key === "ArrowUp" && suggestionProducts.length > 0) {
+                  event.preventDefault();
+                  setActiveSuggestion((prev) =>
+                    prev > 0 ? prev - 1 : suggestionProducts.length - 1
+                  );
+                } else if (event.key === "Escape") {
+                  setSearchFocused(false);
+                  setActiveSuggestion(-1);
+                }
+              }}
+              placeholder="Search shirts, oversized, cargos..."
+              aria-label="Search products"
+              aria-expanded={showDropdown}
+              aria-controls="search-suggestions"
+              aria-activedescendant={
+                activeSuggestion >= 0 ? `search-option-${activeSuggestion}` : undefined
+              }
+              role="combobox"
+              aria-autocomplete="list"
+              autoComplete="off"
+              className="h-9 w-full min-w-0 border border-neutral-200 bg-neutral-50 pl-8 pr-8 text-xs text-neutral-900 placeholder:text-neutral-400 transition-colors focus:border-black focus:bg-white focus-visible:outline-2 focus-visible:outline-black sm:h-10 sm:pl-10"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-neutral-400 hover:text-black"
+                aria-label="Clear search"
+              >
+                <CloseIcon />
+              </button>
+            )}
+          </form>
+
+          {showDropdown && (
+            <div
+              id="search-suggestions"
+              role="listbox"
+              aria-label="Search suggestions"
+              className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 max-h-[70dvh] overflow-y-auto border border-neutral-200 bg-white shadow-xl"
             >
-              <CloseIcon />
-            </button>
+              {suggestionsLoading && (
+                <p role="status" className="px-4 py-3 text-xs text-neutral-500">
+                  Searching…
+                </p>
+              )}
+
+              {!suggestionsLoading && matchingCategories.length > 0 && (
+                <div className="border-b border-neutral-100 px-2 py-2">
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                    Categories
+                  </p>
+                  <ul>
+                    {matchingCategories.map((category) => (
+                      <li key={category}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected="false"
+                          onClick={() => {
+                            setSearchQuery(category);
+                            goToSearch(category);
+                          }}
+                          className="flex min-h-11 w-full items-center gap-2 px-2 text-left text-sm text-neutral-800 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-black"
+                        >
+                          <span className="text-neutral-400"><SearchIcon /></span>
+                          <span>{category}</span>
+                          <span className="ml-auto text-[10px] uppercase tracking-wider text-neutral-400">Category</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {!suggestionsLoading && suggestionProducts.length > 0 && (
+                <div className="border-b border-neutral-100 px-2 py-2">
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                    Products
+                  </p>
+                  <ul>
+                    {suggestionProducts.map((product, idx) => (
+                      <li key={product._id || idx}>
+                        <button
+                          type="button"
+                          id={`search-option-${idx}`}
+                          role="option"
+                          aria-selected={idx === activeSuggestion}
+                          onClick={() => {
+                            saveRecentSearch(product.title);
+                            setSearchFocused(false);
+                            navigate(`/product/${product._id}`);
+                          }}
+                          onMouseEnter={() => setActiveSuggestion(idx)}
+                          className={`flex min-h-11 w-full items-center gap-3 px-2 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-black ${
+                            idx === activeSuggestion ? "bg-neutral-100 text-black" : "text-neutral-800 hover:bg-neutral-50"
+                          }`}
+                        >
+                          <span className="h-9 w-7 shrink-0 overflow-hidden border border-neutral-200 bg-neutral-100">
+                            {product.images?.[0]?.url ? (
+                              <img src={product.images[0].url} alt="" className="h-full w-full object-cover" />
+                            ) : null}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">{product.title}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {!suggestionsLoading &&
+                matchingCategories.length === 0 &&
+                suggestionProducts.length === 0 &&
+                searchQuery.trim().length >= 2 && (
+                  <p className="px-4 py-3 text-xs text-neutral-500">
+                    No quick matches — press Enter to search anyway.
+                  </p>
+                )}
+
+              {visibleRecents.length > 0 && (
+                <div className="px-2 py-2">
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                    Recent searches
+                  </p>
+                  <ul className="flex flex-wrap gap-1.5 px-2 py-1">
+                    {visibleRecents.map((recent) => (
+                      <li key={recent}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery(recent);
+                            goToSearch(recent);
+                          }}
+                          className="inline-flex min-h-9 items-center border border-neutral-200 bg-neutral-50 px-2.5 text-xs text-neutral-700 hover:border-black hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                        >
+                          {recent}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
-        </form>
+        </div>
 
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
           <Link
