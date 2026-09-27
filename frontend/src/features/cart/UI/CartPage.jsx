@@ -10,6 +10,7 @@ import {
 import CartItem from "./CartItem";
 import { formatPrice } from "../../product/utils/product";
 import useCart from "../hooks/useCart";
+import DeliveryEstimator from "../../payment/UI/DeliveryEstimator";
 
 function BagIcon() {
   return (
@@ -183,6 +184,12 @@ export default function CartPage() {
                 </p>
               </div>
 
+              <DeliveryEstimator
+                subtotal={totalValue}
+                currency={currency}
+                compact
+              />
+
               <div className="mt-6 pt-2">
                 <button
                   type="button"
@@ -197,7 +204,7 @@ export default function CartPage() {
                   <ArrowRightIcon />
                 </button>
                 <p className="mt-3 text-center text-[11px] text-neutral-400">
-                  Free standard shipping on all prepaid orders. Doorstep delivery in 2-4 days.
+                  Free standard shipping over ₹1,499 on prepaid orders. Check your PIN above for an exact delivery date and COD eligibility.
                 </p>
               </div>
             </div>

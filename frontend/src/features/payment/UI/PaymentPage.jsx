@@ -1,11 +1,15 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { mockProducts } from "../../product/UI/mockProducts";
 import { formatPrice } from "../../product/utils/product";
+import { selectAuth } from "../../redux/auth.slice.jsx";
 import useRazorpay from "../Hooks/useRazorpay";
 import useCart from "../../cart/hooks/useCart";
 import useCoupon from "../Hooks/useCoupon";
 import { couponErrorMessage } from "../service/coupon.api";
+import DeliveryEstimator from "./DeliveryEstimator";
+import { getCodEligibility, getDeliveryEstimate } from "./deliveryEstimate";
 
 function LockIcon() {
   return (
@@ -98,15 +102,50 @@ export default function PaymentPage({
   const isCartCheckout = activeOrder.source === "cart";
   const displayItems = isCartCheckout ? cartItems : activeOrder.items;
 
+  const { user } = useSelector(selectAuth);
+  const savedAddresses = user?.addresses ?? [];
+  const defaultAddress =
+    savedAddresses.find((address) => address.isDefault) ?? savedAddresses[0] ?? null;
+
   const [customer, setCustomer] = useState({
-    fullName: "Aarav Sharma",
-    email: "aarav.sharma@example.com",
-    phone: "9876543210",
-    address: "Flat 402, Signature Towers, Indiranagar",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560038",
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    pincode: "",
   });
+
+  // Prefill identity fields from the session once it hydrates; never
+  // overwrite what the user has already typed.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing async session hydration into local form state
+    setCustomer((prev) => ({
+      ...prev,
+      fullName: prev.fullName || user?.fullname || "",
+      email: prev.email || user?.email || "",
+      phone: prev.phone || user?.contact || "",
+    }));
+  }, [user?.fullname, user?.email, user?.contact]);
+
+  const [useShipSaved, setUseShipSaved] = useState(true);
+  const shippingSaved = Boolean(useShipSaved && defaultAddress);
+
+  const formatSavedStreet = (address) =>
+    [address?.line1, address?.line2].filter(Boolean).join(", ");
+
+  // Single source of truth for the address the order will ship to.
+  const shipTo = shippingSaved
+    ? {
+        fullName: defaultAddress.recipientName || user?.fullname || "",
+        email: user?.email || "",
+        phone: defaultAddress.phone || user?.contact || "",
+        address: formatSavedStreet(defaultAddress),
+        city: defaultAddress.city || "",
+        pincode: defaultAddress.postalCode || "",
+      }
+    : customer;
+  const shipPincode = shipTo.pincode || "";
 
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [selectedCurrency, setSelectedCurrency] = useState(() => isCartCheckout ? cartCurrency : "INR");
@@ -166,6 +205,21 @@ export default function PaymentPage({
 
   const shipping = subtotal > freeShipping ? 0 : shippingAmount;
   const grandTotal = Math.max(0, subtotal + shipping - appliedDiscount);
+  const deliveryEstimate = useMemo(
+    () => getDeliveryEstimate(shipPincode),
+    [shipPincode]
+  );
+  const codEligibility = useMemo(
+    () =>
+      getCodEligibility({
+        pin: shipPincode,
+        subtotal: grandTotal,
+        currency: displayCurrency,
+      }),
+    [shipPincode, grandTotal, displayCurrency]
+  );
+  const codBlocked = Boolean(shipPincode.trim()) && !codEligibility.eligible &&
+    (/^[1-9][0-9]{5}$/.test(shipPincode.trim()));
 
   const handleApplyCoupon = (e) => {
     e.preventDefault();
@@ -183,13 +237,23 @@ export default function PaymentPage({
     setLocalError("");
     resetPaymentState();
 
-    if (!customer.fullName.trim() || !customer.phone.trim() || !customer.email.trim()) {
+    if (!shipTo.fullName.trim() || !shipTo.phone.trim() || !shipTo.email.trim()) {
       setLocalError("Please fill out your full name, email, and phone number.");
       return;
     }
 
-    if (!customer.address.trim() || !customer.city.trim() || !customer.pincode.trim()) {
+    if (!shipTo.address.trim() || !shipTo.city.trim() || !shipTo.pincode.trim()) {
       setLocalError("Please provide your delivery address, city, and pincode.");
+      return;
+    }
+
+    if (!/^[1-9][0-9]{5}$/.test(shipTo.pincode.trim())) {
+      setLocalError("Enter a valid 6-digit delivery PIN code before paying.");
+      return;
+    }
+
+    if (paymentMethod === "cod" && codBlocked) {
+      setLocalError(codEligibility.reason);
       return;
     }
 
@@ -199,7 +263,7 @@ export default function PaymentPage({
         const response = await externalPaymentProvider({
           order: activeOrder,
           amount: grandTotal,
-          customer,
+          customer: shipTo,
           method: paymentMethod,
           currency: displayCurrency,
         });
@@ -244,9 +308,9 @@ export default function PaymentPage({
     initializePayment({
       order: { ...activeOrder, couponCode: appliedCoupon || undefined },
       customer: {
-        name: customer.fullName,
-        email: customer.email,
-        phone: customer.phone,
+        name: shipTo.fullName,
+        email: shipTo.email,
+        phone: shipTo.phone,
       },
       onSuccess: (res) => {
         if (onSuccess) onSuccess(res);
@@ -286,7 +350,7 @@ export default function PaymentPage({
           </h1>
           <p className="mt-3 text-sm text-neutral-600">
             We have sent an order confirmation and delivery updates to{" "}
-            <strong className="text-neutral-900">{customer.email}</strong>.
+            <strong className="text-neutral-900">{shipTo.email}</strong>.
           </p>
 
           <div className="mt-8 border border-neutral-200 bg-neutral-50 p-6 text-left text-xs">
@@ -378,6 +442,50 @@ export default function PaymentPage({
                   1. Contact & Shipping Address
                 </h2>
 
+                {shippingSaved && (
+                  <div className="mt-4 border border-neutral-300 bg-neutral-50 p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="inline-flex min-h-6 items-center border border-neutral-300 bg-white px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-700">
+                          {defaultAddress.label || "Home"}
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-neutral-900">{shipTo.fullName}</p>
+                        <address className="mt-1 text-sm not-italic leading-6 text-neutral-600">
+                          {shipTo.address}
+                          <br />
+                          {shipTo.city}{defaultAddress.state ? `, ${defaultAddress.state}` : ""} — {shipTo.pincode}
+                          <br />
+                          Phone: {shipTo.phone || "—"}
+                        </address>
+                      </div>
+                      <Link
+                        to="/profile#saved-addresses"
+                        className="inline-flex min-h-11 shrink-0 items-center px-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-700 underline decoration-neutral-400 underline-offset-4 transition-colors hover:text-black hover:decoration-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                      >
+                        Change
+                      </Link>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUseShipSaved(false)}
+                      className="mt-3 inline-flex min-h-11 items-center px-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-700 underline decoration-neutral-400 underline-offset-4 transition-colors hover:text-black hover:decoration-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                    >
+                      Use a different address
+                    </button>
+                  </div>
+                )}
+
+                {!shippingSaved && defaultAddress && (
+                  <button
+                    type="button"
+                    onClick={() => setUseShipSaved(true)}
+                    className="mt-4 inline-flex min-h-11 items-center border border-neutral-300 px-4 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-900 transition-colors hover:border-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                  >
+                    Use saved address
+                  </button>
+                )}
+
+                {!shippingSaved && (
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="full-name" className="block text-[11px] font-medium uppercase tracking-wider text-neutral-600">
@@ -457,11 +565,40 @@ export default function PaymentPage({
                     />
                   </div>
                 </div>
+                )}
               </div>
 
               <div className="border-t border-neutral-200 pt-6">
                 <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-900">
-                  2. Payment Currency
+                  2. Delivery Estimate
+                </h2>
+                <div className="mt-4">
+                  <DeliveryEstimator
+                    key={shippingSaved ? `saved-${shipPincode}` : "manual"}
+                    initialPin={shipPincode}
+                    subtotal={grandTotal}
+                    currency={displayCurrency}
+                    onChange={({ pin }) => {
+                      if (shippingSaved && pin !== shipPincode) {
+                        // Checking a different PIN drops into manual mode so the
+                        // order follows what the user actually typed.
+                        setUseShipSaved(false);
+                      }
+                      if (pin !== customer.pincode) handleInputChange("pincode", pin);
+                    }}
+                  />
+                  {deliveryEstimate && (
+                    <p role="status" className="mt-2 text-xs text-neutral-600">
+                      Estimated delivery: <strong className="text-neutral-900">{deliveryEstimate.label}</strong>
+                      {" "}· {deliveryEstimate.summary}.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-neutral-200 pt-6">
+                <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-900">
+                  3. Payment Currency
                 </h2>
 
                 <div className="mt-4 max-w-xs">
@@ -485,8 +622,18 @@ export default function PaymentPage({
 
               <div className="border-t border-neutral-200 pt-6">
                 <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-900">
-                  3. Select Payment Method
+                  4. Select Payment Method
                 </h2>
+                <p className="mt-2 text-xs leading-5 text-neutral-600">
+                  {codEligibility.eligible ? (
+                    <span className="text-emerald-700">✓ {codEligibility.reason}</span>
+                  ) : (
+                    <span className="text-amber-800">• {codEligibility.reason}</span>
+                  )}
+                  {deliveryEstimate && (
+                    <> Prepaid orders ship first and arrive {deliveryEstimate.label}.</>
+                  )}
+                </p>
 
                 <div className="mt-4 space-y-3">
                   <label
@@ -525,10 +672,12 @@ export default function PaymentPage({
                   </label>
 
                   <label
-                    className={`flex cursor-pointer items-start justify-between border p-4 transition-colors ${
-                      paymentMethod === "cod"
-                        ? "border-black bg-neutral-50"
-                        : "border-neutral-200 bg-white hover:border-neutral-300"
+                    className={`flex items-start justify-between border p-4 transition-colors ${
+                      codBlocked
+                        ? "cursor-not-allowed border-neutral-200 bg-neutral-100 opacity-70"
+                        : paymentMethod === "cod"
+                          ? "cursor-pointer border-black bg-neutral-50"
+                          : "cursor-pointer border-neutral-200 bg-white hover:border-neutral-300"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -537,7 +686,9 @@ export default function PaymentPage({
                         name="paymentMethod"
                         value="cod"
                         checked={paymentMethod === "cod"}
+                        disabled={codBlocked}
                         onChange={() => setPaymentMethod("cod")}
+                        aria-describedby="cod-eligibility"
                         className="mt-0.5 accent-black"
                       />
                       <div>
@@ -549,6 +700,12 @@ export default function PaymentPage({
                         </div>
                         <p className="mt-1 text-xs text-neutral-500">
                           Pay in cash or digital scan upon parcel arrival.
+                        </p>
+                        <p
+                          id="cod-eligibility"
+                          className={`mt-1.5 text-xs ${codEligibility.eligible ? "text-emerald-700" : "text-amber-800"}`}
+                        >
+                          {codBlocked ? `Not available: ${codEligibility.reason}` : codEligibility.reason}
                         </p>
                       </div>
                     </div>
@@ -650,6 +807,19 @@ export default function PaymentPage({
                   <span>Shipping Delivery</span>
                   <span className="font-medium text-neutral-900">
                     {shipping === 0 ? "FREE" : formatPrice({ basePrice: shipping, currency: displayCurrency })}
+                  </span>
+                </div>
+
+                <div className="flex justify-between gap-3 text-neutral-600">
+                  <span>Delivery estimate</span>
+                  <span className="text-right font-medium text-neutral-900">
+                    {deliveryEstimate ? deliveryEstimate.label : "Enter PIN code"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3 text-neutral-600">
+                  <span>COD</span>
+                  <span className={`text-right font-medium ${codEligibility.eligible ? "text-emerald-700" : "text-amber-800"}`}>
+                    {codEligibility.eligible ? "Available" : "Check PIN"}
                   </span>
                 </div>
 
