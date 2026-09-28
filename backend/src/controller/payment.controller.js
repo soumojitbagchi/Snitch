@@ -41,7 +41,7 @@ export const createOrder = async (req, res) => {
 
         const razorpayOrder = await executeWithRetry(() => razorpayInstance.orders.create({
             amount: amountInSubunits,
-            currency: requestedItems.currency,
+            currency: checkout.currency,
             receipt,
             notes: { order_id: receipt, source },
         }));

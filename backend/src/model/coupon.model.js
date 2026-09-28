@@ -43,6 +43,11 @@ const couponSchema = new mongoose.Schema({
         required:false,
         default:null,
         min:0
+    },
+    currency:{
+        type:String,
+        required:true,
+        default:"INR"
     }
 },{timestamps:true})
 

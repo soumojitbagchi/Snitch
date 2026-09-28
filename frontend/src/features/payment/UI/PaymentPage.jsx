@@ -7,6 +7,9 @@ import { selectAuth } from "../../redux/auth.slice.jsx";
 import useRazorpay from "../Hooks/useRazorpay";
 import useCart from "../../cart/hooks/useCart";
 import useCoupon from "../Hooks/useCoupon";
+import useCurrency from "../Hooks/useCurrency";
+import { convertCurrency } from "../service/currency.api";
+import { SUPPORTED_CURRENCIES } from "../../product/utils/currency";
 import { couponErrorMessage } from "../service/coupon.api";
 import DeliveryEstimator from "./DeliveryEstimator";
 import { getCodEligibility, getDeliveryEstimate } from "./deliveryEstimate";
@@ -102,6 +105,13 @@ export default function PaymentPage({
   const isCartCheckout = activeOrder.source === "cart";
   const displayItems = isCartCheckout ? cartItems : activeOrder.items;
 
+  // Sticky-currency rule: explicit user choice > backend currency > locale
+  // seed. The dropdown is the only writer; backend responses never move it.
+  const { selectCurrency, resolveCurrency } = useCurrency();
+  const itemsCurrency = displayItems[0]?.currency || "INR";
+  const backendCurrency = isCartCheckout ? cartCurrency : itemsCurrency;
+  const activeCurrency = resolveCurrency(backendCurrency);
+
   const { user } = useSelector(selectAuth);
   const savedAddresses = user?.addresses ?? [];
   const defaultAddress =
@@ -148,7 +158,6 @@ export default function PaymentPage({
   const shipPincode = shipTo.pincode || "";
 
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
-  const [selectedCurrency, setSelectedCurrency] = useState(() => isCartCheckout ? cartCurrency : "INR");
   const [currencyUpdating, setCurrencyUpdating] = useState(false);
   const {
     couponCode,
@@ -173,11 +182,20 @@ export default function PaymentPage({
     resetPaymentState,
   } = useRazorpay();
 
+  // Explicit user action is the only writer of display currency. On the
+  // direct path the quote effect below converts; on the cart path the
+  // backend rebuilds converted totals.
   const handleCurrencyChange = async (event) => {
     const currency = event.target.value;
-    setSelectedCurrency(currency);
+    selectCurrency(currency);
 
-    if (!isCartCheckout) return;
+    // Direct path converts in the quote effect below; flag loading here
+    // (event handler, not effect body) so the dropdown disables meanwhile.
+    if (!isCartCheckout) {
+      setQuote(null);
+      setCurrencyUpdating(true);
+      return;
+    }
 
     setCurrencyUpdating(true);
     try {
@@ -198,13 +216,45 @@ export default function PaymentPage({
     );
   }, [cartTotal, displayItems, isCartCheckout]);
 
-  const displayCurrency = isCartCheckout ? cartCurrency : selectedCurrency;
-  const { shippingAmount, freeShipping } = displayCurrency === "INR"
-    ? { shippingAmount: Math.round(subtotal * 0.1), freeShipping: 1499 }
-    : { shippingAmount: subtotal < 30 ? 10 : Math.round(subtotal * 0.33), freeShipping: 49 };
+  // Direct-path conversion quote. Fires only when the displayed currency
+  // differs from the items' native currency — i.e. after an explicit user
+  // switch (initial state always matches, so no call on first paint).
+  // Line items keep their native currency labels; only the summary converts.
+  const [quote, setQuote] = useState(null);
+  useEffect(() => {
+    if (isCartCheckout) return undefined;
+    if (!itemsCurrency || activeCurrency === itemsCurrency) return undefined;
 
-  const shipping = subtotal > freeShipping ? 0 : shippingAmount;
-  const grandTotal = Math.max(0, subtotal + shipping - appliedDiscount);
+    let cancelled = false;
+    convertCurrency({ amount: subtotal, from: itemsCurrency, to: activeCurrency })
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.success) setQuote({ amount: res.data.converted, currency: res.data.to });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLocalError(err?.response?.data?.message || "Unable to convert currency.");
+      })
+      .finally(() => {
+        if (!cancelled) setCurrencyUpdating(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isCartCheckout, itemsCurrency, activeCurrency, subtotal]);
+
+  const pricedSubtotal = quote ? quote.amount : subtotal;
+  const displayCurrency = isCartCheckout
+    ? cartCurrency
+    : quote
+      ? quote.currency
+      : itemsCurrency;
+  const { shippingAmount, freeShipping } = displayCurrency === "INR"
+    ? { shippingAmount: Math.round(pricedSubtotal * 0.1), freeShipping: 1499 }
+    : { shippingAmount: pricedSubtotal < 30 ? 10 : Math.round(pricedSubtotal * 0.33), freeShipping: 49 };
+
+  const shipping = pricedSubtotal > freeShipping ? 0 : shippingAmount;
+  const grandTotal = Math.max(0, pricedSubtotal + shipping - appliedDiscount);
   const deliveryEstimate = useMemo(
     () => getDeliveryEstimate(shipPincode),
     [shipPincode]
@@ -223,7 +273,7 @@ export default function PaymentPage({
 
   const handleApplyCoupon = (e) => {
     e.preventDefault();
-    return applyCoupon({ subtotal, currency: displayCurrency });
+    return applyCoupon({ subtotal: pricedSubtotal, currency: displayCurrency });
   };
 
   const handleInputChange = (field, value) => {
@@ -299,7 +349,7 @@ export default function PaymentPage({
 
     // Re-validate against the live subtotal so the displayed discount
     // always matches what the backend will actually charge.
-    const recheck = await revalidateCoupon({ subtotal });
+    const recheck = await revalidateCoupon({ subtotal: pricedSubtotal });
     if (!recheck.ok) {
       setLocalError(couponErrorMessage(recheck.error, "Coupon is no longer valid for this order."));
       return;
@@ -607,15 +657,16 @@ export default function PaymentPage({
                   </label>
                   <select
                     id="payment-currency"
-                    value={selectedCurrency}
+                    value={activeCurrency}
                     onChange={handleCurrencyChange}
                     disabled={currencyUpdating}
                     className="mt-1.5 min-h-11 w-full border border-neutral-300 bg-white px-3 text-xs font-semibold uppercase tracking-wider text-neutral-900 focus-visible:outline-2 focus-visible:outline-black"
                   >
-                    <option value="INR">INR — Indian Rupee</option>
-                    <option value="USD">USD — US Dollar</option>
-                    <option value="EUR">EUR — Euro</option>
-                    <option value="GBP">GBP — British Pound</option>
+                    {SUPPORTED_CURRENCIES.map((entry) => (
+                      <option key={entry.code} value={entry.code}>
+                        {entry.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -799,7 +850,7 @@ export default function PaymentPage({
                 <div className="flex justify-between text-neutral-600">
                   <span>Subtotal</span>
                   <span className="font-medium text-neutral-900 tabular-nums">
-                    {formatPrice({ basePrice: subtotal, currency: displayCurrency })}
+                    {formatPrice({ basePrice: pricedSubtotal, currency: displayCurrency })}
                   </span>
                 </div>
 

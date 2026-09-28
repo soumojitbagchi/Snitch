@@ -11,6 +11,7 @@ import appRouter from "../routes/app.route.js";
 import productRouter from "../routes/product.route.js";
 import paymentRouter from "../routes/payment.routes.js";
 import CartRouter from "../routes/cart.route.js";
+import currencyRouter from "../routes/currency.route.js";
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/product", productRouter);
 app.use("/api/payment", paymentRouter);
 app.use("/api/cart", CartRouter);
+app.use("/api/currency", currencyRouter);
 app.use("/api", paymentRouter);
 app.use("/", appRouter);
 

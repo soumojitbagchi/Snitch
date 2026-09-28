@@ -1,8 +1,11 @@
+import { localeForCurrency } from "./currency";
+
 export const formatPrice = (price) => {
   if (!Number.isFinite(price?.basePrice)) return "—";
-  return new Intl.NumberFormat("en-IN", {
+  const currency = price.currency || "INR";
+  return new Intl.NumberFormat(localeForCurrency(currency), {
     style: "currency",
-    currency: price.currency || "INR",
+    currency,
     maximumFractionDigits: 2,
   }).format(price.basePrice);
 };
