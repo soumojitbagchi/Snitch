@@ -79,6 +79,15 @@ function readRecentSearches() {
   }
 }
 
+function clearRecentSearchesStorage() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function Navbar({ onSearch = null }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -239,6 +248,8 @@ export default function Navbar({ onSearch = null }) {
     } finally {
       dispatch(logout());
       dispatch(clearWishlist());
+      clearRecentSearchesStorage();
+      setRecentSearches([]);
       setAccountOpen(false);
       navigate("/signin");
     }

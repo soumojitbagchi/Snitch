@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { logout as authLogout } from "./auth.slice";
 const initialState = {
   items: [],
   totalAmount: 0,
@@ -81,6 +82,9 @@ const cartSlice = createSlice({
       state.totalAmount = 0;
       state.currency = "INR";
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(authLogout, () => initialState);
   },
 });
 

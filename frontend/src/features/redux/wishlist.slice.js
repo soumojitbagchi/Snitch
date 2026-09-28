@@ -4,6 +4,7 @@ import {
   getWishlist,
   removeWishlistProduct as removeWishlistProductRequest,
 } from "../wishlist/services/wishlist.api";
+import { logout as authLogout } from "./auth.slice";
 
 const requestError = (error) => ({
   message: error.response?.data?.message || error.response?.data?.error || "Something went wrong. Please try again.",
@@ -79,7 +80,8 @@ const wishlistSlice = createSlice({
       })
       .addCase(removeWishlistItem.fulfilled, (state, action) => {
         state.items = state.items.filter((item) => item._id !== action.payload);
-      });
+      })
+      .addCase(authLogout, () => initialState);
   },
 });
 

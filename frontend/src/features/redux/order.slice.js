@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { logout as authLogout } from "./auth.slice";
 
 const STORAGE_KEY = "snitch_orders_v1";
 
@@ -88,6 +89,15 @@ const saveOrdersToStorage = (orders) => {
   }
 };
 
+const clearOrdersFromStorage = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const initialState = {
   orders: getInitialOrders(),
   latestOrder: null,
@@ -123,6 +133,13 @@ const orderSlice = createSlice({
       state.latestOrder = newOrder;
       saveOrdersToStorage(state.orders);
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(authLogout, (state) => {
+      clearOrdersFromStorage();
+      state.orders = initialSampleOrders;
+      state.latestOrder = null;
+    });
   },
 });
 
