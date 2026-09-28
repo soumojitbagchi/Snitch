@@ -1,6 +1,8 @@
 import { useSelector } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import AuthRequiredModal from "../../../components/AuthRequiredModal";
+import { selectAuth } from "../../redux/auth.slice";
 import {
   selectCartItems,
   selectCartCount,
@@ -61,6 +63,8 @@ export default function CartPage() {
   const currency = useSelector(selectCartCurrency);
 
   const { removeItem, setQuantity, cartProducts } = useCart();
+  const { user } = useSelector(selectAuth);
+  const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
     cartProducts().catch(() => {});
@@ -76,6 +80,10 @@ export default function CartPage() {
 
   const handlePlaceOrder = () => {
     if (cartItems.length === 0) return;
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
 
     navigate("/buy-now", {
       state: {
@@ -210,6 +218,7 @@ export default function CartPage() {
             </div>
           )}
         </div>
+        <AuthRequiredModal open={authOpen} onClose={() => setAuthOpen(false)} />
       </main>
 
       <footer className="border-t border-neutral-200 py-6 text-center text-xs text-neutral-400">

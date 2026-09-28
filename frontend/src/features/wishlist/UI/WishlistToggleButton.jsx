@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import AuthRequiredModal from "../../../components/AuthRequiredModal";
+import { selectAuth } from "../../redux/auth.slice";
 import {
   addWishlistItem,
   removeWishlistItem,
@@ -10,13 +12,19 @@ import {
 export default function WishlistToggleButton({ product, className = "" }) {
   const dispatch = useDispatch();
   const location = useLocation();
+  const { user } = useSelector(selectAuth);
   const isWishlisted = useSelector((state) => selectIsWishlisted(state, product?._id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState("");
+  const [authOpen, setAuthOpen] = useState(false);
 
   const handleToggle = async () => {
     if (busy || !product?._id) return;
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
     setBusy(true);
     setError(null);
     setNotice("");
@@ -60,6 +68,7 @@ export default function WishlistToggleButton({ product, className = "" }) {
           {error} {error.startsWith("Sign in") && <Link to="/signin" state={{ from: location.pathname }} className="font-semibold underline underline-offset-2">Sign in</Link>}
         </span>
       )}
+      <AuthRequiredModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </div>
   );
 }

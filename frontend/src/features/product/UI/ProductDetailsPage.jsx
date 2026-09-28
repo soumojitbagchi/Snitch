@@ -1,13 +1,15 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Navbar from "../../../components/Navbar";
+import AuthRequiredModal from "../../../components/AuthRequiredModal";
 import useProductDetails from "../hooks/useProductDetails";
 import ProductDetails from "./ProductDetails";
 import AiSuggestions from "./AiSuggestions";
 import ProductDetailsSkeleton from "./ProductDetailsSkeleton";
 import { setCart } from "../../redux/cart.slice";
+import { selectAuth } from "../../redux/auth.slice";
 import { addProductToCart } from "../../cart/services/cart.api";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { fetchWishlist } from "../../redux/wishlist.slice";
 
 function ProductError({ error, onRetry }) {
@@ -50,17 +52,27 @@ export default function ProductDetailsPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { product, loading, error, retry } = useProductDetails(id);
+  const { user } = useSelector(selectAuth);
+  const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchWishlist());
   }, [dispatch]);
 
   const handleAddToCart = async ({ productId, variantId, quantity }) => {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
     const response = await addProductToCart(productId, variantId, quantity);
     if (response.success && response.cart) dispatch(setCart(response.cart));
   };
 
   const handleBuyNow = ({ product, variant, quantity }) => {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
     navigate("/buy-now", {
       state: { items: [{ product, variant, quantity: quantity || 1 }] },
     });
@@ -92,6 +104,7 @@ export default function ProductDetailsPage() {
               className="pt-2"
             />
             <AiSuggestions productId={id} product={product} />
+            <AuthRequiredModal open={authOpen} onClose={() => setAuthOpen(false)} />
           </>
         )}
       </main>
