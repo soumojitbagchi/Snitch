@@ -26,7 +26,7 @@ services:
       - key: CLIENT_URL
         sync: false # e.g. https://snitch-frontend.onrender.com
       - key: BACKEND_URL
-        sync: false # e.g. https://snitch-backend.onrender.com
+        value: https://snitch-byeg.onrender.com
       - key: GOOGLE_AUTH_CLIENT_ID
         sync: false
       - key: GOOGLE_AUTH_SECRET_KEY
@@ -64,6 +64,6 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        sync: false # e.g. https://snitch-backend.onrender.com
+        value: https://snitch-byeg.onrender.com
       - key: VITE_SOCKET_URL
-        sync: false # same as VITE_API_URL; optional
+        value: https://snitch-byeg.onrender.com
