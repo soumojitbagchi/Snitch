@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Navbar from "../../../components/Navbar";
@@ -46,17 +46,55 @@ function Home() {
   const { user } = useSelector(selectAuth);
   const firstName = String(user?.fullname || user?.name || "").trim().split(/\s+/)[0];
   const [paused, setPaused] = useState(false);
+  const [hoverSlow, setHoverSlow] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const trackRef = useRef(null);
+  const motionRef = useRef({ offset: 0, speed: 0 });
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts])
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = (event) => setReducedMotion(event.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  useEffect(() => {
+    if (reducedMotion) {
+      if (trackRef.current) trackRef.current.style.transform = "";
+      return undefined;
+    }
+    let frame = 0;
+    let last = performance.now();
+    const tick = (now) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const motion = motionRef.current;
+      const target = paused ? 0 : hoverSlow ? 22 : 110;
+      motion.speed += (target - motion.speed) * Math.min(1, dt * 3);
+      const track = trackRef.current;
+      if (track && Math.abs(motion.speed) > 0.05) {
+        const half = track.scrollWidth / 2;
+        if (half > 0) {
+          motion.offset = (motion.offset + motion.speed * dt) % half;
+          track.style.transform = `translateX(${-motion.offset}px)`;
+        }
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [paused, hoverSlow, reducedMotion]);
   return (
     <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
       <Navbar />
 
       <main className="flex-1">
-        <section aria-labelledby="hero-heading" className="relative overflow-hidden border-b border-neutral-200 bg-neutral-950 text-white">
+        <section aria-labelledby="hero-heading" className="relative min-h-[600px] overflow-hidden border-b border-neutral-200 bg-neutral-950 text-white sm:min-h-[680px] lg:min-h-[720px]">
           <div className="relative z-20 mx-auto w-full max-w-[1400px] px-5 pb-16 pt-10 sm:px-8 sm:pb-20 sm:pt-14">
-            <div className="hero-fade-in max-w-2xl">
+            <div className="hero-anim max-w-2xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
                 FW26 — Drop 02
               </p>
@@ -82,8 +120,13 @@ function Home() {
               </div>
             </div>
           </div>
-          <div className="hero-marquee-wrap absolute inset-0 overflow-hidden" aria-label="Featured outfits showcase">
-            <div className={`hero-marquee flex h-full w-max ${paused ? "hero-marquee-paused" : ""}`}>
+          <div
+            className="absolute inset-0 overflow-hidden"
+            aria-label="Featured outfits showcase"
+            onMouseEnter={() => setHoverSlow(true)}
+            onMouseLeave={() => setHoverSlow(false)}
+          >
+            <div ref={trackRef} className="flex h-full w-max will-change-transform">
               {[...HERO_IMAGES, ...HERO_IMAGES].map((img, i) => (
                 <img
                   key={`${img.src}-${i}`}

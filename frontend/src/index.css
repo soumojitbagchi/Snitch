@@ -32,18 +32,25 @@ input:-webkit-autofill {
   -webkit-text-fill-color: #111;
 }
 
-@keyframes hero-marquee {
-  to { transform: translateX(-50%); }
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
 }
 
-.hero-marquee {
-  animation: hero-marquee 60s linear infinite;
+.hero-anim > * {
+  animation: hero-rise 1700ms ease-out both;
 }
 
-.hero-marquee-wrap:hover .hero-marquee,
-.hero-marquee-wrap:focus-within .hero-marquee,
-.hero-marquee-paused {
-  animation-play-state: paused;
+.hero-anim > *:nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.hero-anim > *:nth-child(3) {
+  animation-delay: 180ms;
+}
+
+.hero-anim > *:nth-child(4) {
+  animation-delay: 270ms;
 }
 
 @keyframes hero-fade-in {
@@ -60,7 +67,7 @@ input:-webkit-autofill {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-marquee,
+  .hero-anim > *,
   .hero-fade-in,
   .hero-chip {
     animation: none;
