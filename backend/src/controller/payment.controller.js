@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import razorpayInstance from "../service/razorpay.service.js";
 import { config } from "../config/config.js";
 import Payment from "../model/payment.model.js";
+import Product from "../model/product.model.js";
+import Order from "../model/order.model.js";
 import Coupon from "../model/coupon.model.js";
 import { sendOrderConfirmationEmail } from "../service/email.service.js";
 import { calculateCheckoutTotal, getCheckoutItems, reCalculateStock } from "../service/checkout.service.js";
@@ -58,6 +60,11 @@ export const createOrder = async (req, res) => {
             items: checkout.items,
             couponCode: checkout.coupon || "",
             discount: checkout.discount,
+            sellers: [...new Set(
+                (await Product.find(
+                    { _id: { $in: checkout.items.map((item) => item.productId) } },
+                ).select("seller").lean()).map((product) => String(product.seller)),
+            )],
             paymentStatus: "pending",
         });
 
@@ -117,6 +124,18 @@ export const verifyPayment = async (req, res) => {
         payment.signature = razorpay_signature;
         payment.paymentStatus = "completed";
         await payment.save();
+        await Order.findOneAndUpdate(
+            { payment: payment._id },
+            {
+                $setOnInsert: {
+                    payment: payment._id,
+                    status: "pending",
+                    statusHistory: [{ status: "pending", at: new Date() }],
+                    slaDueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                },
+            },
+            { upsert: true },
+        );
         await reCalculateStock(payment.items);
 
         // Consume one coupon redemption — atomic so concurrent checkouts
@@ -179,4 +198,13 @@ export const getOrderStatus = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message || "Failed to fetch order payments" });
     }
+};
+
+export const sweepStalePayments = async () => {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const result = await Payment.updateMany(
+        { paymentStatus: "pending", createdAt: { $lt: cutoff } },
+        { $set: { paymentStatus: "failed" } },
+    );
+    return result.modifiedCount ?? 0;
 };

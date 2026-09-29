@@ -42,6 +42,11 @@ const paymentSchema = mongoose.Schema({
         default: 0,
         min: 0
     },
+    sellers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        index: true,
+    }],
     items: [{
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
         variantId: { type: mongoose.Schema.Types.ObjectId, required: true },
