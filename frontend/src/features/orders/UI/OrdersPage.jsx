@@ -2,6 +2,7 @@ import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { selectOrders, selectLatestOrder } from "../../redux/order.slice";
 import { formatPrice } from "../../product/utils/product";
+import OrderStatusPill from "./OrderStatusPill";
 
 function CheckBadgeIcon() {
   return (
@@ -181,31 +182,24 @@ export default function OrdersPage() {
                       </div>
                     </div>
 
-                    <span
-                      className={`inline-block border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                        order.status === "Delivered"
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                          : order.status === "Out for Delivery"
-                          ? "border-amber-200 bg-amber-50 text-amber-800"
-                          : "border-neutral-300 bg-white text-neutral-800"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
+                    <OrderStatusPill status={order.status} />
                   </div>
 
                   {/* Order Items List */}
                   <div className="divide-y divide-neutral-100 p-5">
                     {order.items?.map((item, idx) => (
-                      <div
+                      <Link
                         key={idx}
-                        className="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
+                        to={`/orders/${order.id}`}
+                        aria-label={`View order ${order.id} details`}
+                        className="flex items-center gap-4 py-3 first:pt-0 last:pb-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
                       >
                         <div className="h-16 w-14 shrink-0 overflow-hidden border border-neutral-200 bg-neutral-100">
                           {item.image ? (
                             <img
                               src={item.image}
-                              alt={item.title}
+                              alt=""
+                              aria-hidden="true"
                               className="h-full w-full object-cover object-top"
                             />
                           ) : (
@@ -232,7 +226,7 @@ export default function OrdersPage() {
                             currency: item.currency || "INR",
                           })}
                         </span>
-                      </div>
+                      </Link>
                     ))}
                   </div>
 
@@ -241,12 +235,20 @@ export default function OrdersPage() {
                     <span className="text-neutral-500">
                       {order.deliveryEstimate || "Delivery expected soon"}
                     </span>
-                    <Link
-                      to="/"
-                      className="font-semibold uppercase tracking-wider text-black underline underline-offset-4 hover:text-neutral-600"
-                    >
-                      Shop More Items
-                    </Link>
+                    <div className="flex items-center gap-4">
+                      <Link
+                        to={`/orders/${order.id}`}
+                        className="font-semibold uppercase tracking-wider text-black underline underline-offset-4 hover:text-neutral-600"
+                      >
+                        View details
+                      </Link>
+                      <Link
+                        to="/"
+                        className="font-semibold uppercase tracking-wider text-neutral-500 underline underline-offset-4 hover:text-black"
+                      >
+                        Shop More Items
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}

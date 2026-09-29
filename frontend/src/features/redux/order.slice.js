@@ -133,6 +133,16 @@ const orderSlice = createSlice({
       state.latestOrder = newOrder;
       saveOrdersToStorage(state.orders);
     },
+    cancelOrder: (state, action) => {
+      const id = String(action.payload);
+      const terminal = ["Delivered", "completed", "failed", "cancelled"];
+      const order = state.orders.find((item) => String(item.id) === id);
+      if (!order || terminal.includes(order.status)) return;
+      order.status = "cancelled";
+      if (state.latestOrder && String(state.latestOrder.id) === id) {
+        state.latestOrder.status = "cancelled";
+      }
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(authLogout, (state) => {
@@ -143,7 +153,7 @@ const orderSlice = createSlice({
   },
 });
 
-export const { createOrder } = orderSlice.actions;
+export const { createOrder, cancelOrder } = orderSlice.actions;
 
 export const selectOrders = (state) => state.order.orders;
 export const selectLatestOrder = (state) => state.order.latestOrder;
