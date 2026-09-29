@@ -10,11 +10,18 @@ import SellerDashboard, {
   SellerEditRoute,
   SellerListRoute,
   SellerNewRoute,
+  SellerOverviewRoute,
+  SellerInventoryRoute,
+  SellerOrdersRoute,
+  SellerOrderDetailRoute,
+  SellerEarningsRoute,
+  SellerMarketingRoute,
 } from "./features/product/UI/SellerDashboard.jsx";
 import PaymentPage from "./features/payment/UI/PaymentPage.jsx";
 import BuyNowPage from "./features/payment/UI/BuyNowPage.jsx";
 import CartPage from "./features/cart/UI/CartPage.jsx";
 import OrdersPage from "./features/orders/UI/OrdersPage.jsx";
+import OrderDetailsPage from "./features/orders/UI/OrderDetailsPage.jsx";
 import ProfilePage from "./features/profile/UI/ProfilePage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import WishlistPage from "./features/wishlist/UI/WishlistPage.jsx";
@@ -45,6 +52,10 @@ const router = createBrowserRouter([
     element: <OrdersPage />,
   },
   {
+    path: "/orders/:id",
+    element: <OrderDetailsPage />,
+  },
+  {
     path: "/wishlist",
     element: <ProtectedRoute><WishlistPage /></ProtectedRoute>,
   },
@@ -70,11 +81,17 @@ const router = createBrowserRouter([
   },
   {
     path: "/seller",
-    element: <SellerDashboard />,
+    element: <ProtectedRoute allowedRoles={["seller"]}><SellerDashboard /></ProtectedRoute>,
     children: [
-      { index: true, element: <SellerListRoute /> },
+      { index: true, element: <SellerOverviewRoute /> },
+      { path: "products", element: <SellerListRoute /> },
       { path: "new", element: <SellerNewRoute /> },
       { path: ":id/edit", element: <SellerEditRoute /> },
+      { path: "inventory", element: <SellerInventoryRoute /> },
+      { path: "orders", element: <SellerOrdersRoute /> },
+      { path: "orders/:paymentId", element: <SellerOrderDetailRoute /> },
+      { path: "earnings", element: <SellerEarningsRoute /> },
+      { path: "marketing", element: <SellerMarketingRoute /> },
     ],
   },
   {

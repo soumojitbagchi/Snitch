@@ -73,6 +73,31 @@ function StockBadge({ product }) {
   );
 }
 
+function VariantBadges({ product }) {
+  const variants = product.variant ?? [];
+  if (variants.length <= 1) return null;
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label={`Variants of ${product.title}`}>
+      {variants.map((variant, index) => {
+        const size = variant.attributes?.size ?? variant.attributes?.get?.("size") ?? "";
+        const color = variant.attributes?.color ?? variant.attributes?.get?.("color") ?? "";
+        const stock = Number(variant.stock) || 0;
+        const dot = stock === 0 ? "bg-neutral-400" : stock < 5 ? "bg-black" : "bg-green-700";
+        return (
+          <li
+            key={variant._id || index}
+            title={`${size}${color ? ` / ${color}` : ""} — ${stock} in stock`}
+            className="inline-flex items-center gap-1.5 border border-neutral-200 px-2 py-1 text-[11px] text-neutral-700"
+          >
+            <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+            {[size, color].filter(Boolean).join(" / ") || `V${index + 1}`} · {stock}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function priceLabel(product) {
   const range = variantPriceRange(product);
   if (!range) return "—";
@@ -134,7 +159,14 @@ export default function SellerProducts({
   onAdd = () => {},
   onEdit = () => {},
   onDelete = () => {},
+  selectedIds = null,
+  onToggleSelect = null,
+  onToggleAll = null,
+  onBulkDelete = null,
+  bulkBusy = false,
 }) {
+  const selectable = Array.isArray(selectedIds) && typeof onToggleSelect === "function";
+  const allSelected = selectable && products.length > 0 && products.every((p) => selectedIds.includes(p._id));
   return (
     <section
       aria-label="My products"
@@ -161,6 +193,25 @@ export default function SellerProducts({
         </button>
       </div>
 
+      {selectable && selectedIds.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border border-neutral-300 bg-neutral-50 px-4 py-2.5">
+          <p className="text-sm font-medium" role="status">
+            {selectedIds.length} selected
+          </p>
+          {onBulkDelete && (
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={onBulkDelete}
+              className="inline-flex min-h-11 items-center gap-2 border border-red-200 bg-white px-4 text-xs font-semibold uppercase tracking-[0.14em] text-red-700 transition-colors hover:bg-red-700 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:opacity-60"
+            >
+              <IconTrash />
+              {bulkBusy ? "Deleting…" : `Delete ${selectedIds.length}`}
+            </button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div role="status" aria-label="Loading products">
           <SellerProductsSkeleton />
@@ -179,8 +230,13 @@ export default function SellerProducts({
         <div>
           <div
             aria-hidden="true"
-            className="hidden grid-cols-[64px_minmax(0,1fr)_140px_140px_96px] gap-4 border-b border-neutral-900 pb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600 md:grid"
+            className={`hidden gap-4 border-b border-neutral-900 pb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600 md:grid ${
+              selectable
+                ? "grid-cols-[28px_64px_minmax(0,1fr)_140px_140px_96px]"
+                : "grid-cols-[64px_minmax(0,1fr)_140px_140px_96px]"
+            }`}
           >
+            {selectable && <span />}
             <span>Image</span>
             <span>Product</span>
             <span>Price</span>
@@ -189,11 +245,38 @@ export default function SellerProducts({
           </div>
 
           <ul className="divide-y divide-neutral-200">
+            {selectable && products.length > 0 && (
+              <li className="flex items-center gap-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={onToggleAll}
+                  aria-label={allSelected ? "Deselect all products" : "Select all products"}
+                  className="h-5 w-5 accent-black"
+                />
+                <span className="text-neutral-600">
+                  {allSelected ? "Deselect all" : "Select all"}
+                </span>
+              </li>
+            )}
             {products.map((product) => (
               <li
                 key={product._id}
-                className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 py-4 md:grid-cols-[64px_minmax(0,1fr)_140px_140px_96px] md:gap-4"
+                className={`grid items-center gap-3 py-4 ${
+                  selectable
+                    ? "grid-cols-[28px_48px_minmax(0,1fr)_auto] md:grid-cols-[28px_64px_minmax(0,1fr)_140px_140px_96px] md:gap-4"
+                    : "grid-cols-[48px_minmax(0,1fr)_auto] md:grid-cols-[64px_minmax(0,1fr)_140px_140px_96px] md:gap-4"
+                }`}
               >
+                {selectable && (
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(product._id)}
+                    onChange={() => onToggleSelect(product._id)}
+                    aria-label={`Select ${product.title}`}
+                    className="h-5 w-5 accent-black"
+                  />
+                )}
                 <div className="h-16 w-12 overflow-hidden border border-neutral-200 bg-neutral-100 md:w-14">
                   {product.images?.[0]?.url ? (
                     <img
@@ -220,6 +303,7 @@ export default function SellerProducts({
                     {(product.variant ?? []).length} variant
                     {(product.variant ?? []).length === 1 ? "" : "s"}
                   </p>
+                  <VariantBadges product={product} />
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 md:hidden">
                     <span className="text-sm font-semibold tabular-nums">
                       {priceLabel(product)}

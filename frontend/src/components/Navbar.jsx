@@ -260,7 +260,7 @@ export default function Navbar({ onSearch = null }) {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-200 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-2 px-3 sm:h-20 sm:gap-3 sm:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-2 px-3 max-[479px]:h-auto max-[479px]:flex-wrap max-[479px]:py-2 sm:h-20 sm:gap-3 sm:px-8">
         <Link
           to="/"
           className="shrink-0 text-base font-bold uppercase tracking-[0.2em] text-neutral-900 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-black sm:text-xl sm:tracking-[0.24em]"
@@ -268,7 +268,7 @@ export default function Navbar({ onSearch = null }) {
           Snitch
         </Link>
 
-        <div ref={searchWrapRef} className="relative mx-1 min-w-0 max-w-lg flex-1 sm:mx-2">
+        <div ref={searchWrapRef} className="relative mx-1 min-w-0 max-w-lg flex-1 max-[479px]:order-3 max-[479px]:mx-0 max-[479px]:max-w-none max-[479px]:basis-full sm:mx-2">
           <form onSubmit={handleSearchSubmit} role="search">
             <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 sm:left-3.5">
               <SearchIcon />
@@ -478,6 +478,15 @@ export default function Navbar({ onSearch = null }) {
                 {isAuthenticated ? (
                   <nav aria-label="Account menu" className="py-1">
                     <Link to="/profile" onClick={closeAccountMenu} className={menuLinkClass}>Profile</Link>
+                    {user?.role === "seller" ? (
+                      <Link to="/seller" onClick={closeAccountMenu} className={menuLinkClass}>
+                        <span>Seller studio</span><span className="border border-neutral-300 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-600">Seller</span>
+                      </Link>
+                    ) : (
+                      <Link to="/seller" onClick={closeAccountMenu} className={menuLinkClass}>
+                        <span>Sell on Snitch</span><span className="text-xs tabular-nums text-neutral-500">Open a store</span>
+                      </Link>
+                    )}
                     <Link to="/orders" onClick={closeAccountMenu} className={menuLinkClass}>Orders</Link>
                     <Link to="/wishlist" onClick={closeAccountMenu} className={menuLinkClass}>
                       <span>Wishlist</span><span className="text-xs tabular-nums text-neutral-500">{wishlistCount}</span>

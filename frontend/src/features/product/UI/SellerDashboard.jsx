@@ -9,6 +9,11 @@ import {
 } from "react-router-dom";
 import SellerProducts from "./SellerProducts";
 import ProductForm from "./ProductForm";
+import SellerOverview from "../../seller/UI/SellerOverview";
+import SellerInventory from "../../seller/UI/SellerInventory";
+import SellerOrders, { SellerOrderDetail } from "../../seller/UI/SellerOrders";
+import SellerEarnings from "../../seller/UI/SellerEarnings";
+import SellerMarketing from "../../seller/UI/SellerMarketing";
 import { useProduct } from "../hooks/useProduct";
 
 const toInitialValues = (product) => ({
@@ -90,8 +95,13 @@ function DeleteModal({ product, busy, error, onCancel, onConfirm }) {
 }
 
 const sellerNavigation = [
-  { to: "/seller", label: "Products", end: true },
+  { to: "/seller", label: "Overview", end: true },
+  { to: "/seller/products", label: "Products" },
   { to: "/seller/new", label: "Add product" },
+  { to: "/seller/inventory", label: "Inventory" },
+  { to: "/seller/orders", label: "Orders" },
+  { to: "/seller/earnings", label: "Earnings" },
+  { to: "/seller/marketing", label: "Marketing" },
 ];
 
 export default function SellerDashboard() {
@@ -253,8 +263,29 @@ export default function SellerDashboard() {
 }
 
 export function SellerListRoute() {
-  const { products, loading, requestDelete } = useOutletContext();
+  const { products, loading, requestDelete, bulkDelete, setNotice } = useOutletContext();
   const navigate = useNavigate();
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const toggleAll = () => {
+    setSelectedIds((prev) => (prev.length === products.length ? [] : products.map((p) => p._id)));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    const result = await bulkDelete(selectedIds);
+    setBulkBusy(false);
+    if (result.ok) {
+      setNotice(`${result.deletedCount} product(s) deleted.`);
+      setSelectedIds([]);
+    }
+  };
 
   return (
     <SellerProducts
@@ -263,7 +294,48 @@ export function SellerListRoute() {
       onAdd={() => navigate("/seller/new")}
       onEdit={(product) => navigate(`/seller/${product._id}/edit`)}
       onDelete={requestDelete}
+      selectedIds={selectedIds}
+      onToggleSelect={toggleSelect}
+      onToggleAll={toggleAll}
+      onBulkDelete={handleBulkDelete}
+      bulkBusy={bulkBusy}
     />
+  );
+}
+
+export function SellerOverviewRoute() {
+  return <SellerOverview />;
+}
+
+export function SellerInventoryRoute() {
+  const { products, loading, fetchSellerProducts, setNotice } = useOutletContext();
+  return (
+    <SellerInventory
+      products={products}
+      loading={loading}
+      onRefresh={fetchSellerProducts}
+      setNotice={setNotice}
+    />
+  );
+}
+
+export function SellerOrdersRoute() {
+  return <SellerOrders />;
+}
+
+export function SellerOrderDetailRoute() {
+  const { setNotice } = useOutletContext();
+  return <SellerOrderDetail setNotice={setNotice} />;
+}
+
+export function SellerEarningsRoute() {
+  return <SellerEarnings />;
+}
+
+export function SellerMarketingRoute() {
+  const { products, fetchSellerProducts, setNotice } = useOutletContext();
+  return (
+    <SellerMarketing products={products} onRefresh={fetchSellerProducts} setNotice={setNotice} />
   );
 }
 
@@ -286,7 +358,7 @@ export function SellerNewRoute() {
 
     if (result.ok) {
       setNotice("Product published.");
-      navigate("/seller");
+      navigate("/seller/products");
     }
 
     return result;
@@ -295,7 +367,7 @@ export function SellerNewRoute() {
   return (
     <ProductForm
       onSubmit={handleSubmit}
-      onCancel={() => navigate("/seller")}
+      onCancel={() => navigate("/seller/products")}
     />
   );
 }
@@ -308,6 +380,7 @@ export function SellerEditRoute() {
     renameTitle,
     changeDescription,
     changePrice,
+    changeVariant,
     replaceImages,
     setNotice,
   } = useOutletContext();
@@ -333,7 +406,7 @@ export function SellerEditRoute() {
           It may have been deleted or belong to another seller.
         </p>
         <Link
-          to="/seller"
+          to="/seller/products"
           className="mt-6 inline-flex min-h-11 items-center px-2 text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
         >
           Back to products
@@ -353,8 +426,21 @@ export function SellerEditRoute() {
       updates.push(() => changeDescription(id, values.description));
     }
     values.variants.forEach((variant, index) => {
-      if (Number(variant.price) !== product.variant[index]?.price?.basePrice) {
+      const current = product.variant[index];
+      if (Number(variant.price) !== current?.price?.basePrice) {
         updates.push(() => changePrice(id, Number(variant.price), index));
+      }
+      const currentAttrs = current?.attributes ?? {};
+      const currentSize = currentAttrs.size ?? currentAttrs.get?.("size") ?? "";
+      const currentColor = currentAttrs.color ?? currentAttrs.get?.("color") ?? "";
+      const fields = {};
+      if (String(variant.stock ?? "") !== String(current?.stock ?? 0)) {
+        fields.stock = Number(variant.stock);
+      }
+      if (variant.size && variant.size !== currentSize) fields.size = variant.size;
+      if (variant.color && variant.color !== currentColor) fields.color = variant.color;
+      if (Object.keys(fields).length > 0) {
+        updates.push(() => changeVariant(id, index, fields));
       }
     });
     if (values.images.length) updates.push(() => replaceImages(id, values.images));
@@ -375,7 +461,7 @@ export function SellerEditRoute() {
     }
 
     setNotice(updates.length ? "Product updated." : "No changes to save.");
-    navigate("/seller");
+    navigate("/seller/products");
     return { ok: true };
   };
 
@@ -384,7 +470,7 @@ export function SellerEditRoute() {
       key={product._id}
       initialValues={toInitialValues(product)}
       onSubmit={handleSubmit}
-      onCancel={() => navigate("/seller")}
+      onCancel={() => navigate("/seller/products")}
     />
   );
 }
