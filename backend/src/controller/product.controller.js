@@ -395,3 +395,82 @@ export const aiSuggestionController = async (req, res) => {
     }
 }
 
+export const updateVariant = async (req, res) => {
+    try {
+        const user = req.user;
+        const { variantIndex, stock, size, color } = req.body;
+        const data = await Product.findOne({ _id: req.params.id, seller: user._id });
+        if (!data) {
+            return res.status(404).json({ message: "Product not found", success: false });
+        }
+        const index = Number(variantIndex) || 0;
+        const variant = data.variant[index];
+        if (!variant) {
+            return res.status(404).json({ message: "Variant not found", success: false });
+        }
+        if (stock !== undefined) {
+            const nextStock = Number(stock);
+            if (!Number.isInteger(nextStock) || nextStock < 0) {
+                return res.status(400).json({ message: "Stock must be a non-negative integer", success: false });
+            }
+            variant.stock = nextStock;
+        }
+        const attrs = variant.attributes ?? (variant.attributes = new Map());
+        if (size !== undefined) {
+            if (typeof size !== "string" || !size.trim()) {
+                return res.status(400).json({ message: "Size must be a non-empty string", success: false });
+            }
+            if (typeof attrs.set === "function") attrs.set("size", size.trim());
+            else attrs.size = size.trim();
+        }
+        if (color !== undefined) {
+            if (typeof color !== "string" || !color.trim()) {
+                return res.status(400).json({ message: "Color must be a non-empty string", success: false });
+            }
+            if (typeof attrs.set === "function") attrs.set("color", color.trim());
+            else attrs.color = color.trim();
+        }
+        await data.save();
+        await invalidateCatalogCache(req.params.id);
+        res.status(200).json({ message: "Variant updated successfully", data, success: true });
+    } catch (error) {
+        res.status(500).json({ message: error.message, success: false });
+    }
+};
+
+export const bulkDeleteProducts = async (req, res) => {
+    try {
+        const user = req.user;
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0 || ids.length > 50) {
+            return res.status(400).json({ message: "Provide 1 to 50 product ids", success: false });
+        }
+        const validIds = ids.filter((id) => mongoose.isValidObjectId(id));
+        if (validIds.length === 0) {
+            return res.status(400).json({ message: "No valid product ids", success: false });
+        }
+        const result = await Product.deleteMany({ _id: { $in: validIds }, seller: user._id });
+        await Promise.all(validIds.map((id) => invalidateCatalogCache(id)));
+        res.status(200).json({ message: `${result.deletedCount} product(s) deleted`, deletedCount: result.deletedCount, success: true });
+    } catch (error) {
+        res.status(500).json({ message: error.message, success: false });
+    }
+};
+
+export const toggleSale = async (req, res) => {
+    try {
+        const user = req.user;
+        const { onSale } = req.body;
+        const data = await Product.findOne({ _id: req.params.id, seller: user._id });
+        if (!data) {
+            return res.status(404).json({ message: "Product not found", success: false });
+        }
+        data.onSale = Boolean(onSale);
+        await data.save();
+        await invalidateCatalogCache(req.params.id);
+        res.status(200).json({ message: data.onSale ? "Product opted into sale" : "Product removed from sale", data, success: true });
+    } catch (error) {
+        res.status(500).json({ message: error.message, success: false });
+    }
+};
+

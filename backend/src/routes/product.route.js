@@ -10,6 +10,9 @@ import {
     deleteProduct,
     detailsProduct,
     searchProduct,
+    updateVariant,
+    bulkDeleteProducts,
+    toggleSale,
     addToWishlistController,
     removeFromWishlistController,
     viewProductsWishlistController,
@@ -46,6 +49,9 @@ productRouter.put("/update-image/:id", authMiddleware, upload.array('images', 5)
 productRouter.put("/update-price/:id", authMiddleware, upload.none(), updatePriceInfo);
 productRouter.put("/update-title/:id", authMiddleware, upload.none(), updateTitle);
 productRouter.put("/update-description/:id", authMiddleware, upload.none(), updateDescription);
+productRouter.put("/update-variant/:id", authMiddleware, upload.none(), updateVariant);
+productRouter.put("/sale/:id", authMiddleware, upload.none(), toggleSale);
+productRouter.post("/bulk-delete", authMiddleware, bulkDeleteProducts);
 productRouter.get("/details/:productId", detailsProduct);
 productRouter.post("/add-wishlist", authenticate, addToWishlistController);
 productRouter.get("/get-wishlist", authenticate, viewProductsWishlistController);

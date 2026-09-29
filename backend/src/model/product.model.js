@@ -54,6 +54,11 @@ const productSchema = mongoose.Schema({
     tags:{
         type:[String],
         default:[]
+    },
+    onSale:{
+        type: Boolean,
+        default: false,
+        index: true,
     }
 }, {
     timestamps: true
