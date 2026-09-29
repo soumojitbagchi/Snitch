@@ -8,6 +8,7 @@ import { config } from "./config/config.js";
 import {connectToRedis }from "./config/redis.js";
 import http from "http";
 import { attachAiSocket } from "./socket/ai.socket.js";
+import { sweepStalePayments } from "./controller/payment.controller.js";
 
 const startServer = async () => {
     try {
@@ -20,6 +21,16 @@ const startServer = async () => {
         httpServer.listen(PORT, () => {
             console.log(`Server listening on port ${PORT}`);
         });
+
+        const sweepTimer = setInterval(async () => {
+            try {
+                const swept = await sweepStalePayments();
+                if (swept > 0) console.log(`Swept ${swept} stale pending payment(s)`);
+            } catch (error) {
+                console.error("Stale payment sweep failed:", error.message);
+            }
+        }, 60 * 60 * 1000);
+        sweepTimer.unref?.();
     } catch (error) {
         console.error("Failed to start server:", error.message);
         process.exit(1);
