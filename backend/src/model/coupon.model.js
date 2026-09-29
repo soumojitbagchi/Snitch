@@ -48,6 +48,12 @@ const couponSchema = new mongoose.Schema({
         type:String,
         required:true,
         default:"INR"
+    },
+    seller:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"user",
+        default:null,
+        index:true
     }
 },{timestamps:true})
 

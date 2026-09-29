@@ -10,7 +10,7 @@ const checkoutError = (status, message) => Object.assign(new Error(message), { s
 // Returns { coupon, discount } where discount is in the same currency units
 // as the subtotal. Never mutates stock here — stock is consumed only after
 // a payment verifies successfully.
-export const validateCoupon = async (couponCode, subtotal) => {
+export const validateCoupon = async (couponCode, subtotal, sellerIds = []) => {
     const code = String(couponCode || "").trim().toUpperCase();
     if (!code) throw checkoutError(400, "Coupon code is required");
 
@@ -23,6 +23,9 @@ export const validateCoupon = async (couponCode, subtotal) => {
     if (!coupon) throw checkoutError(404, "Invalid coupon code");
     if (coupon.expiresAt.getTime() < Date.now()) throw checkoutError(400, "Coupon has expired");
     if (coupon.stock < 1) throw checkoutError(400, "Coupon is fully redeemed");
+    if (coupon.seller && !sellerIds.map(String).includes(String(coupon.seller))) {
+        throw checkoutError(400, "This coupon is not valid for items in your order");
+    }
     if (amount < coupon.minAmount) {
         throw checkoutError(400, `Coupon needs a minimum order of ${coupon.minAmount}`);
     }
@@ -70,6 +73,7 @@ export const calculateCheckoutTotal = async ({ items, currency, couponCode } = {
     let total = 0;
     let checkoutCurrency = currency || null;
     const verifiedItems = [];
+    const sellerIds = new Set();
 
     for (const item of items) {
         if (!mongoose.isValidObjectId(item.productId)) throw checkoutError(400, "Invalid product id");
@@ -80,8 +84,9 @@ export const calculateCheckoutTotal = async ({ items, currency, couponCode } = {
             throw checkoutError(400, "Quantity must be a positive whole number");
         }
 
-        const product = await Product.findById(item.productId).select("title images variant");
+        const product = await Product.findById(item.productId).select("title images variant seller");
         if (!product) throw checkoutError(404, "Product not found");
+        sellerIds.add(String(product.seller));
 
         const variant = product.variant.id(item.variantId);
         if (!variant) throw checkoutError(400, "Variant does not belong to this product");
@@ -115,7 +120,7 @@ export const calculateCheckoutTotal = async ({ items, currency, couponCode } = {
     let discount = 0;
     let coupon = null;
     if (couponCode) {
-        const result = await validateCoupon(couponCode, total);
+        const result = await validateCoupon(couponCode, total, [...sellerIds]);
         coupon = result.coupon;
         discount = result.discount;
     }
