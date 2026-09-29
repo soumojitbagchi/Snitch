@@ -48,6 +48,21 @@ export const editPrice = async (productId, priceAmount, variantIndex = 0) => {
     return response.data;
 }
 
+export const editVariant = async (productId, { variantIndex = 0, stock, size, color }) => {
+    const response = await api.put(`/update-variant/${productId}`, { variantIndex, stock, size, color });
+    return response.data;
+}
+
+export const bulkDeleteProducts = async (ids) => {
+    const response = await api.post('/bulk-delete', { ids });
+    return response.data;
+}
+
+export const toggleProductSale = async (productId, onSale) => {
+    const response = await api.put(`/sale/${productId}`, { onSale });
+    return response.data;
+}
+
 export const updateProductImage = async (productId, images) => {
     const form = new FormData();
     (Array.isArray(images) ? images : [images]).forEach((image) => form.append('images', image));

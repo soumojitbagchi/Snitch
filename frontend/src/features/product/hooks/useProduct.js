@@ -34,6 +34,9 @@ import {
   editTitle as editTitleApi,
   editDescription as editDescriptionApi,
   editPrice as editPriceApi,
+  editVariant as editVariantApi,
+  bulkDeleteProducts as bulkDeleteProductsApi,
+  toggleProductSale as toggleProductSaleApi,
   updateProductImage as updateProductImageApi,
   deleteProduct as deleteProductApi,
   productData as productDataApi,
@@ -191,12 +194,23 @@ export const useProduct = () => {
     [updateProduct]
   );
 
+  const changeVariant = useCallback(
+    (productId, variantIndex, fields) =>
+      updateProduct(productId, () => editVariantApi(productId, { variantIndex, ...fields }), "Failed to update variant."),
+    [updateProduct]
+  );
+
+  const changeSale = useCallback(
+    (productId, onSale) =>
+      updateProduct(productId, () => toggleProductSaleApi(productId, onSale), "Failed to update sale status."),
+    [updateProduct]
+  );
+
   const replaceImages = useCallback(
     (productId, images) =>
       updateProduct(productId, () => updateProductImageApi(productId, images), "Failed to update images."),
     [updateProduct]
   );
-
   const deleteProduct = useCallback(async (productId) => {
     setBusyIds((prev) => ({ ...prev, [productId]: true }));
     setItemErrors((prev) => ({ ...prev, [productId]: null }));
@@ -218,6 +232,26 @@ export const useProduct = () => {
         delete copy[productId];
         return copy;
       });
+    }
+  }, [dispatch]);
+
+  const bulkDelete = useCallback(async (productIds) => {
+    dispatch(setLoading(true));
+    dispatch(setError(null));
+    try {
+      const response = await bulkDeleteProductsApi(productIds);
+      for (const id of productIds) {
+        dispatch(removeProduct(id));
+        clearProductCache(id);
+      }
+      dispatch(invalidateProductCache());
+      return { ok: true, deletedCount: response?.deletedCount ?? productIds.length };
+    } catch (err) {
+      const message = productError(err, "Failed to delete products.");
+      dispatch(setError(message));
+      return { ok: false, error: message };
+    } finally {
+      dispatch(setLoading(false));
     }
   }, [dispatch]);
 
@@ -290,8 +324,11 @@ export const useProduct = () => {
     renameTitle,
     changeDescription,
     changePrice,
+    changeVariant,
+    changeSale,
     replaceImages,
     deleteProduct,
+    bulkDelete,
     getProductData,
 
     requestDelete,
