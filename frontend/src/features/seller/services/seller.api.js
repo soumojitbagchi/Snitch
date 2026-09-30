@@ -57,6 +57,26 @@ export const sendStockAlert = async () => {
     return response.data;
 }
 
+export const fetchSellerReviews = async (page = 1, limit = 20, rating = "") => {
+    const response = await api.get('/reviews', pageParams(page, limit, rating ? { rating } : {}));
+    return response.data;
+}
+
+export const replySellerReview = async (reviewId, sellerReply) => {
+    const response = await api.patch(`/reviews/${reviewId}/reply`, { sellerReply });
+    return response.data;
+}
+
+export const fetchSellerReturns = async (page = 1, limit = 20, status = "") => {
+    const response = await api.get('/returns', pageParams(page, limit, status ? { status } : {}));
+    return response.data;
+}
+
+export const decideSellerReturn = async (returnId, status) => {
+    const response = await api.patch(`/returns/${returnId}`, { status });
+    return response.data;
+}
+
 export const fetchSellerCoupons = async () => {
     const response = await api.get('/coupons');
     return response.data;

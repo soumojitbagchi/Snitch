@@ -14,6 +14,8 @@ import SellerDashboard, {
   SellerInventoryRoute,
   SellerOrdersRoute,
   SellerOrderDetailRoute,
+  SellerReturnsRoute,
+  SellerReviewsRoute,
   SellerEarningsRoute,
   SellerMarketingRoute,
 } from "./features/product/UI/SellerDashboard.jsx";
@@ -90,6 +92,8 @@ const router = createBrowserRouter([
       { path: "inventory", element: <SellerInventoryRoute /> },
       { path: "orders", element: <SellerOrdersRoute /> },
       { path: "orders/:paymentId", element: <SellerOrderDetailRoute /> },
+      { path: "returns", element: <SellerReturnsRoute /> },
+      { path: "reviews", element: <SellerReviewsRoute /> },
       { path: "earnings", element: <SellerEarningsRoute /> },
       { path: "marketing", element: <SellerMarketingRoute /> },
     ],

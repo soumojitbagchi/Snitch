@@ -12,6 +12,8 @@ import ProductForm from "./ProductForm";
 import SellerOverview from "../../seller/UI/SellerOverview";
 import SellerInventory from "../../seller/UI/SellerInventory";
 import SellerOrders, { SellerOrderDetail } from "../../seller/UI/SellerOrders";
+import SellerReturns from "../../seller/UI/SellerReturns";
+import SellerReviews from "../../seller/UI/SellerReviews";
 import SellerEarnings from "../../seller/UI/SellerEarnings";
 import SellerMarketing from "../../seller/UI/SellerMarketing";
 import { useProduct } from "../hooks/useProduct";
@@ -100,6 +102,8 @@ const sellerNavigation = [
   { to: "/seller/new", label: "Add product" },
   { to: "/seller/inventory", label: "Inventory" },
   { to: "/seller/orders", label: "Orders" },
+  { to: "/seller/returns", label: "Returns" },
+  { to: "/seller/reviews", label: "Reviews" },
   { to: "/seller/earnings", label: "Earnings" },
   { to: "/seller/marketing", label: "Marketing" },
 ];
@@ -328,6 +332,16 @@ export function SellerOrderDetailRoute() {
   return <SellerOrderDetail setNotice={setNotice} />;
 }
 
+export function SellerReturnsRoute() {
+  const { setNotice } = useOutletContext();
+  return <SellerReturns setNotice={setNotice} />;
+}
+
+export function SellerReviewsRoute() {
+  const { setNotice } = useOutletContext();
+  return <SellerReviews setNotice={setNotice} />;
+}
+
 export function SellerEarningsRoute() {
   return <SellerEarnings />;
 }
@@ -416,8 +430,6 @@ export function SellerEditRoute() {
   }
 
   const handleSubmit = async (values) => {
-    // Each endpoint saves independently. Keep the latest successful response in
-    // the store so retries only send changes that have not already been saved.
     const updates = [];
     if (values.title !== product.title) {
       updates.push(() => renameTitle(id, values.title));
