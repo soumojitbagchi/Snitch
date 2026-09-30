@@ -39,6 +39,11 @@ export const updateProfile = async (profile) => {
   return response.data;
 };
 
+export const updateThemePreference = async (theme) => {
+  const response = await api.patch("/preferences", { theme });
+  return response.data;
+};
+
 export const logout = async () => {
   await api.post("/logout");
 };

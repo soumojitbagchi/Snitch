@@ -4,6 +4,11 @@ import { config } from "../config/config.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { sendWelcomeEmail } from "../service/email.service.js";
+import { getJson, setJsonEx } from "../service/cache.service.js";
+
+const THEME_MODES = ["light", "dark", "system"];
+const THEME_TTL_SECONDS = 86400;
+const themeCacheKey = (id) => `user:${id}:theme`;
 
 const issueAccessToken = (user) => {
   return jwt.sign(
@@ -68,6 +73,7 @@ const publicUser = (user) => ({
   role: user.role,
   avatar: user.avatar,
   addresses: user.addresses,
+  preferences: { theme: user.preferences?.theme || "light" },
 });
 
 const notifyWelcome = (user) => {
@@ -190,15 +196,30 @@ const logoutController = (req, res) => {
 const getMe = async (req, res) => {
   const user = req.user;
   if (!user) {
-    return res.status(401).json({
-      warn: "User not found",
-    })
+    return res.status(401).json({ warn: "User not found" });
   }
-  return res.status(200).json({
-    success: true,
-    user,
-  });
-}
+  const publicProfile = publicUser(user);
+  const key = themeCacheKey(user._id);
+  const cachedTheme = await getJson(key);
+  if (THEME_MODES.includes(cachedTheme) && cachedTheme === publicProfile.preferences.theme) {
+    res.set("X-Theme-Cache", "HIT");
+  } else {
+    await setJsonEx(key, publicProfile.preferences.theme, THEME_TTL_SECONDS);
+    res.set("X-Theme-Cache", "MISS");
+  }
+  return res.status(200).json({ success: true, user: publicProfile });
+};
+
+const updatePreferencesController = async (req, res) => {
+  const { theme } = req.body ?? {};
+  if (!THEME_MODES.includes(theme)) {
+    return res.status(400).json({ success: false, error: "Theme must be light, dark, or system." });
+  }
+  req.user.preferences.theme = theme;
+  await req.user.save();
+  await setJsonEx(themeCacheKey(req.user._id), theme, THEME_TTL_SECONDS);
+  return res.status(200).json({ success: true, user: publicUser(req.user) });
+};
 
 const updateProfileController = async (req, res) => {
   const { fullname, contact, addresses } = req.body;
@@ -311,7 +332,7 @@ const refreshAccessToken = async (req, res) => {
 
 const refreshController = refreshAccessToken;
 
-export { signinController, signupController, googleVerifyCallback, googleCallbackController, logoutController, getMe, updateProfileController, updateRoleController, refreshAccessToken, refreshController };
+export { signinController, signupController, googleVerifyCallback, googleCallbackController, logoutController, getMe, updateProfileController, updatePreferencesController, updateRoleController, refreshAccessToken, refreshController };
 
 export default {
   signinController,
@@ -321,6 +342,7 @@ export default {
   logoutController,
   getMe,
   updateProfileController,
+  updatePreferencesController,
   updateRoleController,
   refreshAccessToken,
   refreshController,
