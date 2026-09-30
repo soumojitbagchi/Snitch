@@ -13,6 +13,7 @@ import { SUPPORTED_CURRENCIES } from "../../product/utils/currency";
 import { couponErrorMessage } from "../service/coupon.api";
 import DeliveryEstimator from "./DeliveryEstimator";
 import { getCodEligibility, getDeliveryEstimate } from "./deliveryEstimate";
+import ThemeToggle from "../../theme/ThemeToggle";
 
 function LockIcon() {
   return (
@@ -383,7 +384,10 @@ export default function PaymentPage({
             <Link to="/" className="text-lg font-bold uppercase tracking-[0.24em] focus-visible:outline-2 focus-visible:outline-black">
               Snitch
             </Link>
-            <span className="text-xs uppercase tracking-[0.16em] text-neutral-500">Order Confirmed</span>
+            <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+              <span className="text-xs uppercase tracking-[0.16em] text-neutral-500">Order Confirmed</span>
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 
@@ -458,9 +462,12 @@ export default function PaymentPage({
             <span className="font-semibold text-black underline underline-offset-4">3. Payment</span>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-neutral-600">
-            <LockIcon />
-            <span className="hidden sm:inline uppercase tracking-wider text-[11px]">256-Bit Encrypted</span>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-neutral-600">
+              <LockIcon />
+              <span className="hidden sm:inline uppercase tracking-wider text-[11px]">256-Bit Encrypted</span>
+            </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>

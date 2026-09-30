@@ -36,7 +36,7 @@ function waveFrames({ x, y }) {
     const left = originX * (1 - spread);
     const right = originX + (width - originX) * spread;
     const top = originY * (1 - spread);
-    const front = originY + (height + 48 - originY) * progress * progress * (3 - 2 * progress);
+    const front = originY + (height + 48 - originY) * progress * (2 - progress);
     const curve = 64 * Math.sin(Math.PI * progress);
     const points = [`${left}px ${top}px`, `${right}px ${top}px`];
 
@@ -121,7 +121,7 @@ export default function ThemeProvider({ children }) {
           if (version !== wipeVersionRef.current) return;
           try {
             document.documentElement.animate(waveFrames(origin), {
-              duration: 480,
+              duration: 380,
               easing: "linear",
               pseudoElement: "::view-transition-new(root)",
             });

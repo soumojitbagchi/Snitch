@@ -10,6 +10,7 @@ import {
   fetchWishlist,
   selectWishlistCount,
 } from "../features/redux/wishlist.slice";
+import ThemeToggle from "../features/theme/ThemeToggle";
 
 function SearchIcon() {
   return (
@@ -437,6 +438,7 @@ export default function Navbar({ onSearch = null }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
+          <ThemeToggle />
           <Link
             to="/wishlist"
             aria-label={`Wishlist${wishlistCount ? `, ${wishlistCount} items` : ""}`}

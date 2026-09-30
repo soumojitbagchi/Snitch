@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { selectOrders, selectLatestOrder } from "../../redux/order.slice";
 import { formatPrice } from "../../product/utils/product";
 import OrderStatusPill from "./OrderStatusPill";
+import ThemeToggle from "../../theme/ThemeToggle";
 
 function CheckBadgeIcon() {
   return (
@@ -61,7 +62,7 @@ export default function OrdersPage() {
           >
             Snitch
           </Link>
-          <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-wider">
+          <div className="flex shrink-0 items-center gap-1 text-xs font-semibold uppercase tracking-wider sm:gap-4">
             <Link
               to="/cart"
               className="text-neutral-600 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-black"
@@ -74,6 +75,7 @@ export default function OrdersPage() {
             >
               Shop
             </Link>
+            <ThemeToggle />
           </div>
         </div>
       </header>

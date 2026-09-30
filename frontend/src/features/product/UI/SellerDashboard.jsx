@@ -17,6 +17,7 @@ import SellerReviews from "../../seller/UI/SellerReviews";
 import SellerEarnings from "../../seller/UI/SellerEarnings";
 import SellerMarketing from "../../seller/UI/SellerMarketing";
 import { useProduct } from "../hooks/useProduct";
+import ThemeToggle from "../../theme/ThemeToggle";
 
 const toInitialValues = (product) => ({
   title: product.title,
@@ -153,9 +154,12 @@ export default function SellerDashboard() {
           >
             Snitch
           </Link>
-          <span className="border border-neutral-300 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-700 lg:hidden">
-            Seller
-          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            <span className="border border-neutral-300 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-700 lg:hidden">
+              Seller
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
 
         <div className="px-3 py-3 lg:px-4 lg:py-6">

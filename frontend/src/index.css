@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, Helvetica, Arial, sans-serif;
@@ -30,6 +32,20 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+.dark body {
+  background: var(--color-neutral-950);
+  color: var(--color-neutral-100);
+}
+
+html.theme-wipe::view-transition-old(root),
+html.theme-wipe::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.theme-wipe::view-transition-old(root) { z-index: 1; }
+html.theme-wipe::view-transition-new(root) { z-index: 2; }
 
 @keyframes catalog-reveal {
   from { clip-path: inset(0 0 100% 0); }
@@ -121,5 +137,85 @@ input:-webkit-autofill {
   .hero-chip {
     animation: none;
   }
+}
+
+@layer utilities {
+  .dark .bg-white { background-color: var(--color-neutral-950); }
+  .dark .bg-white\/95 { background-color: color-mix(in srgb, var(--color-neutral-950) 95%, transparent); }
+  .dark .bg-white\/90 { background-color: color-mix(in srgb, var(--color-neutral-950) 90%, transparent); }
+  .dark .bg-neutral-50 { background-color: var(--color-neutral-900); }
+  .dark .bg-neutral-50\/50 { background-color: color-mix(in srgb, var(--color-neutral-900) 50%, transparent); }
+  .dark .bg-neutral-100 { background-color: var(--color-neutral-800); }
+  .dark .bg-neutral-200 { background-color: var(--color-neutral-700); }
+  .dark .bg-black { background-color: var(--color-white); }
+  .dark .bg-black.text-white { color: var(--color-black); }
+  .dark div.bg-black.text-white { background-color: var(--color-neutral-800); color: var(--color-white); }
+
+  .dark .text-neutral-950,
+  .dark .text-neutral-900,
+  .dark .text-black { color: var(--color-neutral-100); }
+  .dark .text-neutral-800 { color: var(--color-neutral-200); }
+  .dark .text-neutral-700 { color: var(--color-neutral-300); }
+  .dark .text-neutral-600,
+  .dark .text-neutral-500 { color: var(--color-neutral-400); }
+  .dark .border-neutral-100,
+  .dark .border-neutral-200,
+  .dark .border-neutral-300 { border-color: var(--color-neutral-700); }
+  .dark .border-neutral-400,
+  .dark .border-neutral-500 { border-color: var(--color-neutral-600); }
+  .dark .border-black { border-color: var(--color-neutral-300); }
+
+  .dark .bg-red-50 { background-color: var(--color-red-950); }
+  .dark .bg-emerald-50,
+  .dark .bg-green-50 { background-color: var(--color-emerald-950); }
+  .dark .bg-emerald-50\/60 { background-color: color-mix(in srgb, var(--color-emerald-950) 60%, transparent); }
+  .dark .bg-amber-50 { background-color: var(--color-amber-950); }
+  .dark .text-red-600,
+  .dark .text-red-700,
+  .dark .text-red-800 { color: var(--color-red-300); }
+  .dark .text-emerald-600,
+  .dark .text-emerald-700,
+  .dark .text-emerald-800,
+  .dark .text-emerald-900,
+  .dark .text-emerald-950,
+  .dark .text-green-800 { color: var(--color-emerald-300); }
+  .dark .text-amber-800,
+  .dark .text-amber-900,
+  .dark .text-amber-950 { color: var(--color-amber-300); }
+  .dark .border-red-200,
+  .dark .border-red-300 { border-color: var(--color-red-800); }
+  .dark .border-emerald-200,
+  .dark .border-emerald-300,
+  .dark .border-green-200 { border-color: var(--color-emerald-800); }
+  .dark .border-amber-200 { border-color: var(--color-amber-800); }
+
+  .dark :is(a, button).bg-black:hover { background-color: var(--color-neutral-200); color: var(--color-black); }
+  .dark :is(a, button).bg-black:active { background-color: var(--color-neutral-300); }
+  .dark .hover\:bg-neutral-50:hover,
+  .dark .hover\:bg-neutral-100:hover { background-color: var(--color-neutral-800); }
+  .dark .hover\:bg-neutral-200:hover,
+  .dark .hover\:bg-black:hover { background-color: var(--color-neutral-700); }
+  .dark .hover\:text-black:hover { color: var(--color-neutral-100); }
+  .dark .hover\:text-white:hover { color: var(--color-white); }
+  .dark .hover\:border-black:hover { border-color: var(--color-neutral-300); }
+  .dark .focus-visible\:outline-black:focus-visible { outline-color: var(--color-neutral-200); }
+  .dark :is(input:not([type="radio"]):not([type="checkbox"]), textarea, select) { background-color: var(--color-neutral-900); color: var(--color-neutral-100); }
+  .dark :is(input:not([type="radio"]):not([type="checkbox"]), textarea, select):focus { background-color: var(--color-neutral-800); border-color: var(--color-neutral-300); }
+  .dark :is(input, textarea, select).border-neutral-200,
+  .dark :is(input, textarea, select).border-neutral-300 { border-color: var(--color-neutral-500); }
+  .dark section[aria-labelledby="hero-heading"] a.bg-white,
+  .dark section[aria-labelledby="account-access-heading"] a.bg-white { background-color: var(--color-white); color: var(--color-black); }
+  .dark section[aria-labelledby="hero-heading"] a.bg-white:hover,
+  .dark section[aria-labelledby="account-access-heading"] a.bg-white:hover { background-color: var(--color-neutral-200); }
+}
+
+.dark ::selection {
+  background: var(--color-neutral-200);
+  color: var(--color-neutral-950);
+}
+
+.dark input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-neutral-900) inset;
+  -webkit-text-fill-color: var(--color-neutral-100);
 }
 

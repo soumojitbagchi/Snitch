@@ -13,6 +13,7 @@ import CartItem from "./CartItem";
 import { formatPrice } from "../../product/utils/product";
 import useCart from "../hooks/useCart";
 import DeliveryEstimator from "../../payment/UI/DeliveryEstimator";
+import ThemeToggle from "../../theme/ThemeToggle";
 
 function BagIcon() {
   return (
@@ -102,12 +103,15 @@ export default function CartPage() {
           >
             Snitch
           </Link>
-          <Link
-            to="/"
-            className="text-xs font-semibold uppercase tracking-wider text-neutral-600 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-black"
-          >
-            ← Back to shop
-          </Link>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+            <ThemeToggle />
+            <Link
+              to="/"
+              className="text-xs font-semibold uppercase tracking-wider text-neutral-600 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-black"
+            >
+              ← Back to shop
+            </Link>
+          </div>
         </div>
       </header>
 
