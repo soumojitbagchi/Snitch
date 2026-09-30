@@ -9,7 +9,7 @@ const httpError = (status, message) => Object.assign(new Error(message), { statu
 let cartFindController = async (userId) => Cart.findOne({ user: userId });
 
 const getProductVariant = async (productId, variantId) => {
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({ _id: productId });
     if (!product) throw httpError(404, "Product not found");
 
     const variant = variantId ? product.variant.id(variantId) : product.variant[0];
