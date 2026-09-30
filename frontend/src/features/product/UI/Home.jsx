@@ -113,6 +113,7 @@ function Home() {
                 </a>
                 <Link
                   to="/search?q=bestsellers"
+                  viewTransition
                   className="inline-flex min-h-11 items-center justify-center border border-white/40 px-5 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:border-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   Bestsellers
@@ -162,6 +163,7 @@ function Home() {
                 <li key={item.label} className="hero-chip" style={{ animationDelay: `${i * 60}ms` }}>
                   <Link
                     to={`/search?q=${encodeURIComponent(item.query)}`}
+                    viewTransition
                     className={`inline-flex min-h-11 items-center justify-center border px-4 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black ${
                       item.label === "Sale"
                         ? "border-red-600 text-red-600 hover:bg-red-600 hover:text-white"

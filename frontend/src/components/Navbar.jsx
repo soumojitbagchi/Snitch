@@ -5,8 +5,6 @@ import { selectAuth, logout } from "../features/redux/auth.slice";
 import { selectCartCount } from "../features/redux/cart.slice";
 import { logout as logoutRequest } from "../features/auth/services/auth.api";
 import { searchProducts } from "../features/product/services/product.api";
-import ThemeToggle from "../features/theme/ThemeToggle";
-import { useTheme } from "../features/theme/theme.context";
 import {
   clearWishlist,
   fetchWishlist,
@@ -96,7 +94,6 @@ export default function Navbar({ onSearch = null }) {
   const accountMenuRef = useRef(null);
   const searchWrapRef = useRef(null);
   const { user } = useSelector(selectAuth);
-  const { flushPending } = useTheme();
   const cartCount = useSelector(selectCartCount);
   const wishlistCount = useSelector(selectWishlistCount);
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,7 +217,9 @@ export default function Navbar({ onSearch = null }) {
       onSearch(clean);
       return;
     }
-    navigate(clean ? `/search?q=${encodeURIComponent(clean)}` : "/");
+    navigate(clean ? `/search?q=${encodeURIComponent(clean)}` : "/", {
+      viewTransition: Boolean(clean),
+    });
   };
 
   const handleSearchSubmit = (event) => {
@@ -247,7 +246,6 @@ export default function Navbar({ onSearch = null }) {
 
   const handleLogout = async () => {
     try {
-      await flushPending();
       await logoutRequest();
     } finally {
       dispatch(logout());
@@ -439,7 +437,6 @@ export default function Navbar({ onSearch = null }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
-          <ThemeToggle />
           <Link
             to="/wishlist"
             aria-label={`Wishlist${wishlistCount ? `, ${wishlistCount} items` : ""}`}

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { Link, useNavigationType, useSearchParams } from "react-router-dom";
 import Navbar from "../../../components/Navbar";
 import { productError } from "../utils/product";
 import { searchProducts } from "../services/product.api";
@@ -30,10 +30,25 @@ function SearchEmptyState({ query }) {
 export default function SearchResultsPage() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q")?.trim() || "";
+
+  return (
+    <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
+      <Navbar />
+      <SearchContent key={query} query={query} />
+    </div>
+  );
+}
+
+function SearchContent({ query }) {
+  const navigationType = useNavigationType();
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(query));
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+
+  useLayoutEffect(() => {
+    if (navigationType !== "POP") window.scrollTo({ top: 0, behavior: "instant" });
+  }, [navigationType]);
 
   useEffect(() => {
     if (!query) return undefined;
@@ -62,44 +77,40 @@ export default function SearchResultsPage() {
   }, [query, retryCount]);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
-      <Navbar />
+    <main className="flex-1">
+      <section className="border-b border-neutral-200 bg-neutral-50">
+        <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-8 sm:py-14">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">
+            Catalog search
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+            {query ? <>Results for “{query}”</> : "Find your next essential"}
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-600 sm:text-[15px]">
+            {query
+              ? "Browse the pieces that match your search."
+              : "Use the search field above to explore the latest collection."}
+          </p>
+        </div>
+      </section>
 
-      <main className="flex-1">
-        <section className="border-b border-neutral-200 bg-neutral-50">
-          <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-8 sm:py-14">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">
-              Catalog search
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              {query ? <>Results for “{query}”</> : "Find your next essential"}
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-600 sm:text-[15px]">
-              {query
-                ? "Browse the pieces that match your search."
-                : "Use the search field above to explore the latest collection."}
-            </p>
-          </div>
-        </section>
-
-        {!query ? (
-          <div className="mx-auto w-full max-w-[1400px] px-5 py-12 sm:px-8 sm:py-16">
-            <SearchEmptyState query="your search" />
-          </div>
-        ) : !loading && !error && products.length === 0 ? (
-          <div className="mx-auto w-full max-w-[1400px] px-5 py-12 sm:px-8 sm:py-16">
-            <SearchEmptyState query={query} />
-          </div>
-        ) : (
-          <ShopGrid
-            title="Matching products"
-            products={products}
-            loading={loading}
-            error={error}
-            onRetry={() => setRetryCount((count) => count + 1)}
-          />
-        )}
-      </main>
-    </div>
+      {!query ? (
+        <div className="mx-auto w-full max-w-[1400px] px-5 py-12 sm:px-8 sm:py-16">
+          <SearchEmptyState query="your search" />
+        </div>
+      ) : !loading && !error && products.length === 0 ? (
+        <div className="mx-auto w-full max-w-[1400px] px-5 py-12 sm:px-8 sm:py-16">
+          <SearchEmptyState query={query} />
+        </div>
+      ) : (
+        <ShopGrid
+          title="Matching products"
+          products={products}
+          loading={loading}
+          error={error}
+          onRetry={() => setRetryCount((count) => count + 1)}
+        />
+      )}
+    </main>
   );
 }
