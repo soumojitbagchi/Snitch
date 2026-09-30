@@ -11,6 +11,10 @@ import {
     restockVariant,
     sendStockAlert,
     getVariantVelocity,
+    listSellerReviews,
+    replyReview,
+    listSellerReturns,
+    decideReturn,
     listSellerCoupons,
     createSellerCoupon,
     deleteSellerCoupon,
@@ -32,6 +36,12 @@ sellerRouter.get("/inventory/low-stock", getLowStock);
 sellerRouter.get("/inventory/velocity", getVariantVelocity);
 sellerRouter.post("/inventory/restock", restockVariant);
 sellerRouter.post("/inventory/alert", sendStockAlert);
+
+sellerRouter.get("/reviews", listSellerReviews);
+sellerRouter.patch("/reviews/:id/reply", replyReview);
+
+sellerRouter.get("/returns", listSellerReturns);
+sellerRouter.patch("/returns/:id", decideReturn);
 
 sellerRouter.get("/coupons", listSellerCoupons);
 sellerRouter.post("/coupons", createSellerCoupon);

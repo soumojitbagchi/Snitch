@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import Payment from "../model/payment.model.js";
 import Product from "../model/product.model.js";
 import Order from "../model/order.model.js";
+import Review from "../model/review.model.js";
+import ReturnRequest from "../model/return.model.js";
 import Coupon from "../model/coupon.model.js";
 import { sendLowStockAlert } from "../service/sellerAlert.service.js";
 
@@ -333,8 +335,10 @@ export const getAttentionFeed = async (req, res) => {
         const sellerId = toObjectId(req.user._id);
         const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-        const [newOrders] = await Promise.all([
+        const [newOrders, returnRequests, lowRatings] = await Promise.all([
             Payment.countDocuments({ sellers: sellerId, paymentStatus: "completed", createdAt: { $gte: weekAgo } }),
+            ReturnRequest.countDocuments({ seller: sellerId, status: "requested" }),
+            Review.countDocuments({ status: "visible", rating: { $lte: 2 }, createdAt: { $gte: weekAgo } }),
         ]);
 
         const products = await Product.find({ seller: sellerId }).select("title variant").lean();
@@ -349,13 +353,15 @@ export const getAttentionFeed = async (req, res) => {
 
         const feed = [];
         if (newOrders > 0) feed.push({ type: "orders", label: `${newOrders} new order(s) this week`, severity: "info" });
+        if (returnRequests > 0) feed.push({ type: "returns", label: `${returnRequests} return request(s) awaiting decision`, severity: "warn" });
         if (outOfStock > 0) feed.push({ type: "stockout", label: `${outOfStock} variant(s) out of stock`, severity: "urgent" });
         if (lowStock > 0) feed.push({ type: "lowstock", label: `${lowStock} variant(s) running low`, severity: "warn" });
+        if (lowRatings > 0) feed.push({ type: "ratings", label: `${lowRatings} low rating(s) this week`, severity: "warn" });
 
         res.status(200).json({
             data: {
                 feed,
-                counts: { newOrders, outOfStock, lowStock },
+                counts: { newOrders, returnRequests, outOfStock, lowStock, lowRatings },
             },
             success: true,
         });
@@ -363,8 +369,6 @@ export const getAttentionFeed = async (req, res) => {
         res.status(500).json({ message: error.message, success: false });
     }
 };
-
-// ---------- Inventory ----------
 
 export const getLowStock = async (req, res) => {
     try {
@@ -482,7 +486,183 @@ export const getVariantVelocity = async (req, res) => {
     }
 };
 
-// ---------- Coupons / marketing ----------
+export const listSellerReviews = async (req, res) => {
+    try {
+        const sellerId = toObjectId(req.user._id);
+        const { page, limit, skip } = parsePaging(req.query);
+        const match = {};
+        if (req.query.rating) {
+            const rating = Number(req.query.rating);
+            if (rating >= 1 && rating <= 5) match.rating = rating;
+        } 
+
+        const [result] = await Review.aggregate([
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "product",
+                    foreignField: "_id",
+                    as: "prod",
+                    pipeline: [{ $project: { seller: 1, title: 1, images: 1 } }],
+                },
+            },
+            { $unwind: "$prod" },
+            { $match: { "prod.seller": sellerId, ...match } },
+            { $sort: { createdAt: -1 } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "user",
+                    foreignField: "_id",
+                    as: "author",
+                    pipeline: [{ $project: { fullname: 1 } }],
+                },
+            },
+            { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
+            {
+                $facet: {
+                    data: [{ $skip: skip }, { $limit: limit }],
+                    total: [{ $count: "count" }],
+                    avg: [{ $group: { _id: null, rating: { $avg: "$rating" }, count: { $sum: 1 } } }],
+                    perProduct: [
+                        {
+                            $group: {
+                                _id: "$product",
+                                title: { $first: "$prod.title" },
+                                avg: { $avg: "$rating" },
+                                count: { $sum: 1 },
+                            },
+                        },
+                        { $sort: { count: -1 } },
+                        { $limit: 20 },
+                    ],
+                },
+            },
+        ]);
+
+        res.status(200).json({
+            data: result?.data ?? [],
+            page,
+            limit,
+            total: result?.total?.[0]?.count ?? 0,
+            pages: Math.ceil((result?.total?.[0]?.count ?? 0) / limit),
+            average: result?.avg?.[0]?.rating ? Math.round(result.avg[0].rating * 10) / 10 : 0,
+            perProduct: result?.perProduct ?? [],
+            success: true,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message, success: false });
+    }
+};
+
+export const replyReview = async (req, res) => {
+    try {
+        const sellerId = toObjectId(req.user._id);
+        const reviewId = toObjectId(req.params.id);
+        const { sellerReply } = req.body;
+        if (!reviewId) return res.status(400).json({ message: "Invalid review id", success: false });
+        if (typeof sellerReply !== "string" || !sellerReply.trim() || sellerReply.length > 2000) {
+            return res.status(400).json({ message: "Reply must be 1-2000 characters", success: false });
+        }
+
+        const review = await Review.findById(reviewId);
+        if (!review) return res.status(404).json({ message: "Review not found", success: false });
+        const product = await Product.findOne({ _id: review.product, seller: sellerId }).select("_id").lean();
+        if (!product) return res.status(403).json({ message: "Not your product review", success: false });
+
+        review.sellerReply = sellerReply.trim();
+        await review.save();
+        res.status(200).json({ message: "Reply saved", data: review, success: true });
+    } catch (error) {
+        res.status(500).json({ message: error.message, success: false });
+    }
+};
+
+export const listSellerReturns = async (req, res) => {
+    try {
+        const sellerId = toObjectId(req.user._id);
+        const { page, limit, skip } = parsePaging(req.query);
+        const match = { seller: sellerId };
+        if (req.query.status) match.status = req.query.status;
+
+        const total = await ReturnRequest.countDocuments(match);
+        const data = await ReturnRequest.find(match)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("payment", "orderId amount currency paymentStatus createdAt")
+            .populate("productId", "title images")
+            .populate("requestedBy", "fullname email")
+            .lean();
+
+        const top = await ReturnRequest.aggregate([
+            { $match: { seller: sellerId } },
+            { $group: { _id: { product: "$productId", variant: "$variantId" }, count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "_id.product",
+                    foreignField: "_id",
+                    as: "prod",
+                    pipeline: [{ $project: { title: 1 } }],
+                },
+            },
+            { $unwind: { path: "$prod", preserveNullAndEmptyArrays: true } },
+        ]);
+
+        res.status(200).json({
+            data,
+            page,
+            limit,
+            total,
+            pages: Math.ceil(total / limit),
+            topReturned: top,
+            success: true,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message, success: false });
+    }
+};
+
+export const decideReturn = async (req, res) => {
+    try {
+        const sellerId = toObjectId(req.user._id);
+        const returnId = toObjectId(req.params.id);
+        const { status } = req.body;
+        if (!returnId) return res.status(400).json({ message: "Invalid return id", success: false });
+
+        const request = await ReturnRequest.findOne({ _id: returnId, seller: sellerId });
+        if (!request) return res.status(404).json({ message: "Return request not found", success: false });
+
+        const allowed = {
+            requested: ["approved", "rejected"],
+            approved: ["refunded"],
+            rejected: [],
+            refunded: [],
+        };
+        if (!allowed[request.status]?.includes(status)) {
+            return res.status(400).json({ message: `Cannot move return from ${request.status} to ${status}`, success: false });
+        }
+
+        if (status === "refunded") {
+            await Product.updateOne(
+                { _id: request.productId, "variant._id": request.variantId },
+                { $inc: { "variant.$.stock": Number(request.quantity) || 0 } },
+            );
+        }
+
+        request.status = status;
+        request.decidedAt = new Date();
+        request.decidedBy = sellerId;
+        await request.save();
+
+        res.status(200).json({ message: `Return ${status}`, data: request, success: true });
+    } catch (error) {
+        res.status(500).json({ message: error.message, success: false });
+    }
+};
 
 export const listSellerCoupons = async (req, res) => {
     try {

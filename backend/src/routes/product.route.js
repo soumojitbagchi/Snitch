@@ -20,6 +20,8 @@ import {
 } from "../controller/product.controller.js";
 import { authMiddleware, authenticate } from "../middleware/auth.middleware.js";
 import productValidator from "../validation/product.validation.js";
+import { listProductReviews, createProductReview } from "../controller/review.controller.js";
+import { createReturnRequest, listMyReturns } from "../controller/return.controller.js";
 import multer from 'multer'
 
 const productRouter = Router();
@@ -61,6 +63,10 @@ productRouter.get("/all", allProducts);
 productRouter.get("/all-by-seller", authMiddleware, allProductsBySeller);
 productRouter.get("/search", productValidator.validSearch, searchProduct);
 productRouter.get("/ai-suggestion", authenticate, aiSuggestionController);
+productRouter.post("/returns", authenticate, createReturnRequest);
+productRouter.get("/returns/mine", authenticate, listMyReturns);
+productRouter.get("/:id/reviews", listProductReviews);
+productRouter.post("/:id/reviews", authenticate, createProductReview);
 
 productRouter.use((err, req, res, next) => {
     if (err instanceof multer.MulterError || err?.message === 'Only image files are allowed!') {
