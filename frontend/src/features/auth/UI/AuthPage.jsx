@@ -3,6 +3,7 @@ import Signin from "./Signin";
 import Signup from "./Signup";
 import Navbar from "../../../components/Navbar";
 import StoreFooter from "./StoreFooter";
+import { API_BASE_URL } from "../services/api.client";
 
 function GoogleIcon() {
   return (
@@ -117,7 +118,7 @@ export default function AuthPage({ initialMode = "signin" }) {
             </div>
 
             <a
-              href="/api/auth/google"
+              href={`${API_BASE_URL}/api/auth/google`}
               className="flex h-12 w-full items-center justify-center gap-2.5 border border-neutral-300 text-[12px] font-semibold uppercase tracking-[0.16em] transition-colors hover:border-black"
             >
               <GoogleIcon />

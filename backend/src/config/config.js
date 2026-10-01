@@ -26,6 +26,9 @@ if(!process.env.CLIENT_URL){
     throw new Error("client url isnt defined")
 
 }
+if(process.env.NODE_ENV === "production" && !process.env.BACKEND_URL){
+    throw new Error("backend url isnt defined")
+}
 if(!process.env.GOOGLE_AUTH_SECRET_KEY){
     throw new Error("oAuth secret isnt defined")
 
@@ -85,9 +88,7 @@ export const config={
     JWT_KEY:process.env.JWT_KEY,
     PORT:process.env.PORT,
     CLIENT_URL:process.env.CLIENT_URL,
-    // Public backend origin (used for OAuth callbacks). Falls back to
-    // CLIENT_URL for local dev where frontend proxy hits the same host.
-    BACKEND_URL:process.env.BACKEND_URL || process.env.CLIENT_URL,
+    BACKEND_URL:process.env.BACKEND_URL || `http://localhost:${process.env.PORT}`,
     GOOGLE_AUTH_CLIENT_ID:process.env.GOOGLE_AUTH_CLIENT_ID,
     GOOGLE_AUTH_SECRET_KEY:process.env.GOOGLE_AUTH_SECRET_KEY,
     IMAGEKIT_PRIVATE_KEY:process.env.IMAGEKIT_PRIVATE_KEY,
