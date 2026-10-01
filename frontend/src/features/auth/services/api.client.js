@@ -24,10 +24,13 @@ export const refreshAccessTokenRequest = async () => {
   return inflightRefresh;
 };
 
-const isRefreshUrl = (url = "") => url.includes("/api/auth/refresh");
+const isRefreshUrl = (url = "") =>
+  url.includes("/api/auth/refresh") || url === "/refresh";
 const isAuthUrl = (url = "") =>
   url.includes("/api/auth/signin") ||
   url.includes("/api/auth/signup") ||
+  url === "/signin" ||
+  url === "/signup" ||
   isRefreshUrl(url);
 
 export const createApiClient = (baseURL) => {
@@ -39,13 +42,14 @@ export const createApiClient = (baseURL) => {
       const original = error.config;
       const status = error.response?.status;
       const url = original?.url ?? "";
+      const fullUrl = `${original?.baseURL ?? ""}${url}`;
 
       if (
         status === 401 &&
         original &&
         !original._retry &&
         !isAuthUrl(url) &&
-        !isRefreshUrl(original.baseURL + url)
+        !isAuthUrl(fullUrl)
       ) {
         original._retry = true;
         try {

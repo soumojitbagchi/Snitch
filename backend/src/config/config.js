@@ -5,12 +5,7 @@ import { fileURLToPath } from "url"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// 1) default: looks in process.cwd() (backend/.env when run from backend/)
-// 2) explicit: backend/.env resolved from this file (works even if cwd is backend/src/)
-// 3) legacy fallback: src/.env (your old location)
-dotenv.config()
 dotenv.config({ path: path.resolve(__dirname, "../../.env") })
-dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 if(!process.env.MONGO_URI){
     throw new Error("mongo uri isnt defined")

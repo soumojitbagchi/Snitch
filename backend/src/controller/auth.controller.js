@@ -301,8 +301,8 @@ const refreshAccessToken = async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
   if (!refreshToken) {
     return res.status(401).json({
-      message: "refresh token not found",
       success: false,
+      error: "refresh token not found",
     });
   }
   let decoded;
@@ -310,16 +310,16 @@ const refreshAccessToken = async (req, res) => {
     decoded = jwt.verify(refreshToken, config.JWT_SESSION_KEY);
   } catch {
     return res.status(401).json({
-      message: "invalid or expired refresh token",
       success: false,
+      error: "invalid or expired refresh token",
     });
   }
   const userId = decoded.id;
   const user = await userData.findById(userId);
   if (!user) {
     return res.status(404).json({
-      message: "user not found, invalid refresh token",
       success: false,
+      error: " invalid credential",
     });
   }
   const newAccessToken = issueAccessToken(user);
