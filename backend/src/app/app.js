@@ -13,12 +13,13 @@ import paymentRouter from "../routes/payment.routes.js";
 import sellerRouter from "../routes/seller.route.js";
 import CartRouter from "../routes/cart.route.js";
 import currencyRouter from "../routes/currency.route.js";
+import helmet from "helmet";
 
 const app = express();
 
 // Required on Render (behind a proxy) for Secure cross-site cookies.
 app.set("trust proxy", 1);
-
+app.use(helmet());
 app.use(express.json());
 app.use(morgan("dev"));
 const allowedOrigins = [config.CLIENT_URL, config.BACKEND_URL].filter(
