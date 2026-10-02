@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Navbar from "../../../components/Navbar.jsx";
 import { getMe, updateProfile } from "../../auth/services/auth.api.js";
 import { selectAuth, setUser } from "../../redux/auth.slice.jsx";
+import { COUNTRIES, normalizeCountry } from "../../payment/UI/deliveryEstimate.js";
 
 const emptyAddress = () => ({
   label: "Home",
@@ -201,6 +202,16 @@ export default function ProfilePage() {
                       </label>
                       <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-700">Postal code
                         <input required value={address.postalCode || ""} onChange={(event) => setAddress(index, "postalCode", event.target.value)} className={inputClass} autoComplete="postal-code" />
+                      </label>
+                      <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-700">Country
+                        <select value={normalizeCountry(address.country)} onChange={(event) => setAddress(index, "country", event.target.value)} className={inputClass} autoComplete="country-name">
+                          {COUNTRIES.map((entry) => (
+                            <option key={entry.code} value={entry.code}>
+                              {entry.name}
+                            </option>
+                          ))}
+                          <option value="OTHER">Other country</option>
+                        </select>
                       </label>
                       <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-700">Phone
                         <input type="tel" value={address.phone || ""} onChange={(event) => setAddress(index, "phone", event.target.value)} className={inputClass} autoComplete="tel" />
