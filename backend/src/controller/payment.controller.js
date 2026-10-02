@@ -7,6 +7,7 @@ import Order from "../model/order.model.js";
 import Coupon from "../model/coupon.model.js";
 import { sendOrderConfirmationEmail } from "../service/email.service.js";
 import { calculateCheckoutTotal, getCheckoutItems, reCalculateStock } from "../service/checkout.service.js";
+import { exchangeRate } from "../service/currencyConverter.service.js";
 
 async function executeWithRetry(apiFn, retries = 2, delayMs = 300) {
     let lastError;
@@ -86,7 +87,6 @@ export const createOrder = async (req, res) => {
         });
     }
 };
-
 export const verifyPayment = async (req, res) => {
     if (!config.RAZORPAY_KEY_SECRET) {
         return res.status(500).json({ success: false, error: "payment provider misconfigured" });
@@ -188,6 +188,131 @@ export const verifyPayment = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message || "Payment verification failed" });
+    }
+};
+
+const COD_COUNTRIES = ["IN", "US", "GB"];
+const COD_CAP_INR = 50000;
+
+const generateCodPaymentId = async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        const candidate = `COD-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+        const exists = await Payment.exists({ paymentId: candidate });
+        if (!exists) return candidate;
+    }
+    return `COD-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
+};
+
+const toCodResponse = (payment) => ({
+    success: true,
+    orderId: payment.orderId,
+    paymentId: payment.paymentId,
+    amount: payment.amount,
+    currency: payment.currency,
+    method: "Cash on Delivery",
+});
+
+export const cashOnDelivery = async (req, res) => {
+    try {
+        const { orderId, items = [], couponCode, source = "direct" } = req.body;
+        const shippingInput = req.body.shippingAddress ?? req.body.shipping ?? {};
+
+        const shipping = {
+            fullName: String(shippingInput.fullName || "").trim(),
+            phone: String(shippingInput.phone || "").trim(),
+            address: String(shippingInput.address || "").trim(),
+            city: String(shippingInput.city || "").trim(),
+            pincode: String(shippingInput.pincode || "").trim(),
+            country: String(shippingInput.country || "").trim().toUpperCase(),
+        };
+        if (!shipping.fullName || !shipping.phone || !shipping.address || !shipping.city || !shipping.pincode) {
+            return res.status(400).json({ success: false, error: "Complete shipping address is required for COD" });
+        }
+        if (!COD_COUNTRIES.includes(shipping.country)) {
+            return res.status(400).json({ success: false, error: "Cash on Delivery is available in India, the US and the UK only" });
+        }
+
+        if (orderId) {
+            const existing = await Payment.findOne({ orderId: String(orderId).slice(0, 40), user: req.user._id }).lean();
+            if (existing && existing.paymentStatus === "completed") {
+                return res.status(200).json({ ...toCodResponse(existing), already: true });
+            }
+        }
+
+        const requestedItems = await getCheckoutItems({ source, items, userId: req.user._id });
+        const checkout = await calculateCheckoutTotal({ items: requestedItems.items, currency: requestedItems.currency, couponCode });
+
+        const payableInr = checkout.payable * await exchangeRate(checkout.currency, "INR");
+        if (payableInr > COD_CAP_INR) {
+            return res.status(400).json({ success: false, error: "COD is available up to ₹50,000. Please use prepaid." });
+        }
+
+        const receipt = String(orderId || `rcpt_${Date.now()}`).slice(0, 40);
+        const payment = await Payment.create({
+            user: req.user._id,
+            amount: checkout.payable,
+            currency: checkout.currency,
+            orderId: receipt,
+            paymentId: await generateCodPaymentId(),
+            items: checkout.items,
+            shippingAddress: shipping,
+            couponCode: checkout.coupon || "",
+            discount: checkout.discount,
+            sellers: [...new Set(
+                (await Product.find(
+                    { _id: { $in: checkout.items.map((item) => item.productId) } },
+                ).select("seller").lean()).map((product) => String(product.seller)),
+            )],
+            paymentStatus: "completed",
+        });
+
+        await Order.findOneAndUpdate(
+            { payment: payment._id },
+            {
+                $setOnInsert: {
+                    payment: payment._id,
+                    status: "pending",
+                    statusHistory: [{ status: "pending", at: new Date() }],
+                    slaDueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                },
+            },
+            { upsert: true },
+        );
+        await reCalculateStock(payment.items);
+
+        if (payment.couponCode && payment.discount > 0) {
+            await Coupon.findOneAndUpdate(
+                { coupon: payment.couponCode, stock: { $gt: 0 } },
+                { $inc: { stock: -1 } },
+            ).catch((error) => console.error("Coupon stock decrement failed:", error.message));
+        }
+
+        sendOrderConfirmationEmail({
+            name: req.user.fullname,
+            email: req.user.email,
+            orderId: payment.orderId,
+            paymentId: payment.paymentId,
+            amount: payment.amount,
+            currency: payment.currency,
+            items: checkout.items.map((item) => ({
+                title: item.title,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                lineTotal: item.lineTotal,
+                currency: item.currency,
+                image: item.image,
+                size: item.size,
+                color: item.color,
+            })),
+        }).catch((error) => console.error("Order confirmation email failed:", error.message));
+
+        return res.status(201).json(toCodResponse(payment));
+    } catch (error) {
+        const status = error.status || error.statusCode || 500;
+        return res.status(status >= 400 && status < 500 ? status : 500).json({
+            success: false,
+            error: error.message || "Cash on delivery order creation failed",
+        });
     }
 };
 

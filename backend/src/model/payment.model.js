@@ -60,7 +60,15 @@ const paymentSchema = mongoose.Schema({
         image: { type: String, default: '' },
         size: { type: String, default: '' },
         color: { type: String, default: '' },
-    }]
+    }],
+    shippingAddress: {
+        fullName: { type: String, default: '' },
+        phone: { type: String, default: '' },
+        address: { type: String, default: '' },
+        city: { type: String, default: '' },
+        pincode: { type: String, default: '' },
+        country: { type: String, default: '' },
+    },
 }, { timestamps: true })
 
 const Payment = mongoose.model('payment', paymentSchema)
