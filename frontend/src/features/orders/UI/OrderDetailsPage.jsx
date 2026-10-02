@@ -5,25 +5,29 @@ import Navbar from "../../../components/Navbar";
 import { cancelOrder, selectOrders } from "../../redux/order.slice";
 import { formatPrice } from "../../product/utils/product";
 import { fetchAllProducts } from "../../product/services/product.api";
+import { fetchMyOrder, normalizeServerOrder } from "../services/order.api";
 import { rankSimilar } from "../../product/utils/similarity";
 import ProductCard from "../../product/UI/ProductCard";
 import OrderStatusPill from "./OrderStatusPill";
+
+const isObjectId = (value) => /^[a-f0-9]{24}$/i.test(String(value || ""));
 
 const STEPS = ["Confirmed", "Packed", "Shipped", "Out for Delivery", "Delivered"];
 
 const stepIndexFor = (status) => {
   switch (status) {
     case "Delivered":
-    case "completed":
+    case "Completed":
       return STEPS.length;
     case "Out for Delivery":
       return 3;
     case "Shipped":
+    case "Processing":
       return 2;
     case "Packed":
       return 1;
-    case "failed":
-    case "cancelled":
+    case "Failed":
+    case "Cancelled":
       return -1;
     default:
       return 0;
@@ -60,11 +64,36 @@ function OrderError() {
 export default function OrderDetailsPage() {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const userId = useSelector((state) => state.auth.user?.id);
   const orders = useSelector(selectOrders);
-  const order = orders.find((item) => String(item.id) === String(id));
+  const [serverState, setServerState] = useState({ key: null, order: null });
+  const serverKey = `${userId ?? "guest"}:${id}`;
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [similar, setSimilar] = useState([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    if (!userId || !isObjectId(id)) return () => controller.abort();
+    fetchMyOrder(id, controller.signal)
+      .then((response) => {
+        if (controller.signal.aborted) return;
+        if (response?.success === false || !response?.data) {
+          setServerState({ key: serverKey, order: null });
+          return;
+        }
+        setServerState({ key: serverKey, order: normalizeServerOrder(response.data) });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setServerState({ key: serverKey, order: null });
+      });
+    return () => controller.abort();
+  }, [userId, id, serverKey]);
+
+  const localOrder = orders.find((item) => String(item.id) === String(id));
+  const serverReady = serverState.key === serverKey;
+  const serverLoading = Boolean(userId && isObjectId(id) && !serverReady);
+  const order = serverReady ? serverState.order : localOrder;
 
   useEffect(() => {
     if (!confirming) return undefined;
@@ -91,6 +120,19 @@ export default function OrderDetailsPage() {
     return () => controller.abort();
   }, [order, firstItemId]);
 
+  if (serverLoading) {
+    return (
+      <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
+        <Navbar />
+        <main className="flex-1">
+          <p role="status" className="mx-auto w-full max-w-[760px] px-5 py-16 text-sm text-neutral-600 sm:px-8">
+            Loading order…
+          </p>
+        </main>
+      </div>
+    );
+  }
+
   if (!order) {
     return (
       <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
@@ -103,8 +145,8 @@ export default function OrderDetailsPage() {
   }
 
   const items = Array.isArray(order.items) ? order.items : [];
-  const terminal = ["Delivered", "completed", "failed", "cancelled"];
-  const cancellable = order && !terminal.includes(order.status);
+  const terminal = ["Delivered", "Completed", "Failed", "Cancelled"];
+  const cancellable = order && order.source !== "server" && !terminal.includes(order.status);
 
   const requestCancel = () => {
     if (!cancellable || cancelling) return;

@@ -1,9 +1,10 @@
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import { selectOrders, selectLatestOrder } from "../../redux/order.slice";
+import { selectLatestOrder } from "../../redux/order.slice";
 import { formatPrice } from "../../product/utils/product";
 import OrderStatusPill from "./OrderStatusPill";
 import ThemeToggle from "../../theme/ThemeToggle";
+import useOrders from "../hooks/useOrders";
 
 function CheckBadgeIcon() {
   return (
@@ -48,7 +49,7 @@ function PackageIcon() {
 }
 
 export default function OrdersPage() {
-  const orders = useSelector(selectOrders);
+  const { orders, loading, error, retry } = useOrders();
   const latestOrder = useSelector(selectLatestOrder);
 
   return (
@@ -100,7 +101,7 @@ export default function OrdersPage() {
                     <strong>
                       {formatPrice({
                         basePrice: latestOrder.totalAmount,
-                        currency: "INR",
+                        currency: latestOrder.currency || "INR",
                       })}
                     </strong>
                     .
@@ -126,7 +127,26 @@ export default function OrdersPage() {
           </div>
 
           {/* Orders List */}
-          {orders.length === 0 ? (
+          {loading ? (
+            <div role="status" aria-label="Loading orders" className="py-20 text-center">
+              <p className="text-sm text-neutral-600">Loading your orders…</p>
+            </div>
+          ) : error ? (
+            <div className="py-20 text-center">
+              <p role="alert" className="mx-auto max-w-sm border-l-2 border-red-700 pl-3 text-left text-sm leading-6 text-red-700">
+                {error}
+              </p>
+              <div className="mt-8">
+                <button
+                  type="button"
+                  onClick={retry}
+                  className="inline-flex min-h-12 items-center justify-center bg-black px-8 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-neutral-800"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : orders.length === 0 ? (
             <div className="py-20 text-center">
               <div className="mx-auto flex h-20 w-20 items-center justify-center border border-neutral-200 bg-neutral-50">
                 <PackageIcon />
@@ -178,7 +198,7 @@ export default function OrdersPage() {
                         <p className="font-bold text-neutral-900 tabular-nums">
                           {formatPrice({
                             basePrice: order.totalAmount,
-                            currency: "INR",
+                            currency: order.currency || "INR",
                           })}
                         </p>
                       </div>
