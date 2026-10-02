@@ -231,3 +231,33 @@ export const chnageCurrencyController = async (req, res) => {
         return sendCartError(res, error);
     }
 };
+
+export const deleteMassProductQuantityController = async (req,res)=>{
+    const {productId , variantId}=req.body
+    try {
+        const userCart = await cartFindController(req.user._id);
+        if (!userCart) {
+            return res.status(404).json({ success: false, message: "Cart not found" });
+        }
+        if (!productId || !variantId) {
+            throw httpError(400, "Product ID and variant ID are required");
+        }
+        const product = await Product.findById(productId);
+        if (!product) {
+            throw httpError(404, "Product not found");
+        }
+        const variant = await getProductVariant(productId, variantId);
+       
+        const item = userCart.items.find((cartItem) =>
+            cartItem.product.toString() === product._id.toString() &&
+            (cartItem.variant?.toString() ?? null) === (variant._id.toString() ?? null)
+        );
+        if (!item) throw httpError(404, "Cart item not found");
+        userCart.items.pull(item);
+        await userCart.save();
+        const updatedCart = await buildCartResponse(userCart._id);
+        return res.status(200).json({ success: true, message: "Cart item deleted successfully", cart: updatedCart });
+    } catch (error) {
+        return sendCartError(res, error);
+    }
+}
