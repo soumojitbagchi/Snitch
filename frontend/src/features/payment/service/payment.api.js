@@ -38,6 +38,23 @@ export const verifyRazorpayPayment = async ({
   return response.data;
 };
 
+export const createCodOrder = async ({
+  source,
+  items = [],
+  orderId,
+  couponCode,
+  shipping,
+}) => {
+  const response = await api.post("/payment/cash-on-delivery", {
+    source,
+    items,
+    orderId,
+    couponCode,
+    shipping,
+  });
+  return response.data;
+};
+
 export const fetchOrderStatus = async (orderId) => {
   const response = await api.get(`/order-status/${encodeURIComponent(orderId)}`);
   return response.data;

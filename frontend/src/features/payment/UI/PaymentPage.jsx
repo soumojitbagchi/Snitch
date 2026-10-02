@@ -11,8 +11,9 @@ import useCurrency from "../Hooks/useCurrency";
 import { convertCurrency } from "../service/currency.api";
 import { SUPPORTED_CURRENCIES } from "../../product/utils/currency";
 import { couponErrorMessage } from "../service/coupon.api";
+import { createCodOrder } from "../service/payment.api";
 import DeliveryEstimator from "./DeliveryEstimator";
-import { getCodEligibility, getDeliveryEstimate } from "./deliveryEstimate";
+import { COUNTRIES, countryName, getCodEligibility, getDeliveryEstimate, isValidPostal, normalizeCountry } from "./deliveryEstimate";
 import ThemeToggle from "../../theme/ThemeToggle";
 
 function LockIcon() {
@@ -125,6 +126,7 @@ export default function PaymentPage({
     address: "",
     city: "",
     pincode: "",
+    country: "IN",
   });
 
   // Prefill identity fields from the session once it hydrates; never
@@ -154,9 +156,11 @@ export default function PaymentPage({
         address: formatSavedStreet(defaultAddress),
         city: defaultAddress.city || "",
         pincode: defaultAddress.postalCode || "",
+        country: normalizeCountry(defaultAddress.country),
       }
-    : customer;
+    : { ...customer, country: normalizeCountry(customer.country) };
   const shipPincode = shipTo.pincode || "";
+  const shipCountry = shipTo.country || "IN";
 
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [currencyUpdating, setCurrencyUpdating] = useState(false);
@@ -257,20 +261,21 @@ export default function PaymentPage({
   const shipping = pricedSubtotal > freeShipping ? 0 : shippingAmount;
   const grandTotal = Math.max(0, pricedSubtotal + shipping - appliedDiscount);
   const deliveryEstimate = useMemo(
-    () => getDeliveryEstimate(shipPincode),
-    [shipPincode]
+    () => getDeliveryEstimate(shipPincode, shipCountry),
+    [shipPincode, shipCountry]
   );
   const codEligibility = useMemo(
     () =>
       getCodEligibility({
         pin: shipPincode,
+        country: shipCountry,
         subtotal: grandTotal,
         currency: displayCurrency,
       }),
-    [shipPincode, grandTotal, displayCurrency]
+    [shipPincode, shipCountry, grandTotal, displayCurrency]
   );
   const codBlocked = Boolean(shipPincode.trim()) && !codEligibility.eligible &&
-    (/^[1-9][0-9]{5}$/.test(shipPincode.trim()));
+    isValidPostal(shipPincode, shipCountry);
 
   const handleApplyCoupon = (e) => {
     e.preventDefault();
@@ -294,12 +299,12 @@ export default function PaymentPage({
     }
 
     if (!shipTo.address.trim() || !shipTo.city.trim() || !shipTo.pincode.trim()) {
-      setLocalError("Please provide your delivery address, city, and pincode.");
+      setLocalError("Please provide your delivery address, city, and PIN / postal code.");
       return;
     }
 
-    if (!/^[1-9][0-9]{5}$/.test(shipTo.pincode.trim())) {
-      setLocalError("Enter a valid 6-digit delivery PIN code before paying.");
+    if (!isValidPostal(shipTo.pincode, shipCountry)) {
+      setLocalError(`Enter a valid postal code for ${countryName(shipCountry)} before paying.`);
       return;
     }
 
@@ -333,18 +338,44 @@ export default function PaymentPage({
 
     if (paymentMethod === "cod") {
       setLocalProcessing(true);
-      setTimeout(() => {
+      try {
+        const response = await createCodOrder({
+          source: isCartCheckout ? "cart" : "direct",
+          items: displayItems.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity || 1,
+          })),
+          orderId: activeOrder.id,
+          couponCode: appliedCoupon || undefined,
+          shipping: {
+            fullName: shipTo.fullName,
+            phone: shipTo.phone,
+            address: shipTo.address,
+            city: shipTo.city,
+            pincode: shipTo.pincode,
+            country: shipCountry,
+          },
+        });
         setLocalProcessing(false);
         const codResult = {
-          orderId: activeOrder.id,
-          paymentId: "COD-" + Date.now(),
-          amount: grandTotal,
+          orderId: response.orderId || activeOrder.id,
+          paymentId: response.paymentId,
+          amount: response.amount ?? grandTotal,
           method: "Cash on Delivery",
-          currency: displayCurrency,
+          currency: response.currency || displayCurrency,
         };
         setLocalResult(codResult);
         if (onSuccess) onSuccess(codResult);
-      }, 900);
+      } catch (err) {
+        setLocalProcessing(false);
+        const errText =
+          err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Could not place the COD order. Try again.";
+        setLocalError(errText);
+        if (onFailure) onFailure(err);
+      }
       return;
     }
 
@@ -507,13 +538,15 @@ export default function PaymentPage({
                           {defaultAddress.label || "Home"}
                         </p>
                         <p className="mt-2 text-sm font-semibold text-neutral-900">{shipTo.fullName}</p>
-                        <address className="mt-1 text-sm not-italic leading-6 text-neutral-600">
-                          {shipTo.address}
-                          <br />
-                          {shipTo.city}{defaultAddress.state ? `, ${defaultAddress.state}` : ""} — {shipTo.pincode}
-                          <br />
-                          Phone: {shipTo.phone || "—"}
-                        </address>
+                          <address className="mt-1 text-sm not-italic leading-6 text-neutral-600">
+                            {shipTo.address}
+                            <br />
+                            {shipTo.city}{defaultAddress.state ? `, ${defaultAddress.state}` : ""} — {shipTo.pincode}
+                            <br />
+                            {countryName(shipCountry)}
+                            <br />
+                            Phone: {shipTo.phone || "—"}
+                          </address>
                       </div>
                       <Link
                         to="/profile#saved-addresses"
@@ -610,8 +643,27 @@ export default function PaymentPage({
                   </div>
 
                   <div>
+                    <label htmlFor="country-input" className="block text-[11px] font-medium uppercase tracking-wider text-neutral-600">
+                      Country *
+                    </label>
+                    <select
+                      id="country-input"
+                      value={COUNTRIES.some((entry) => entry.code === normalizeCountry(customer.country)) ? normalizeCountry(customer.country) : "OTHER"}
+                      onChange={(e) => handleInputChange("country", e.target.value)}
+                      className="mt-1.5 min-h-11 w-full border border-neutral-300 bg-white px-3 text-xs text-neutral-900 focus-visible:outline-2 focus-visible:outline-black"
+                    >
+                      {COUNTRIES.map((entry) => (
+                        <option key={entry.code} value={entry.code}>
+                          {entry.name}
+                        </option>
+                      ))}
+                      <option value="OTHER">Other country</option>
+                    </select>
+                  </div>
+
+                  <div>
                     <label htmlFor="pincode-input" className="block text-[11px] font-medium uppercase tracking-wider text-neutral-600">
-                      Pincode *
+                      PIN / Postal code *
                     </label>
                     <input
                       id="pincode-input"
@@ -633,12 +685,15 @@ export default function PaymentPage({
                   <DeliveryEstimator
                     key={shippingSaved ? `saved-${shipPincode}` : "manual"}
                     initialPin={shipPincode}
+                    country={shipCountry}
+                    onCountryChange={(code) => {
+                      setUseShipSaved(false);
+                      handleInputChange("country", code);
+                    }}
                     subtotal={grandTotal}
                     currency={displayCurrency}
                     onChange={({ pin }) => {
                       if (shippingSaved && pin !== shipPincode) {
-                        // Checking a different PIN drops into manual mode so the
-                        // order follows what the user actually typed.
                         setUseShipSaved(false);
                       }
                       if (pin !== customer.pincode) handleInputChange("pincode", pin);
@@ -871,7 +926,7 @@ export default function PaymentPage({
                 <div className="flex justify-between gap-3 text-neutral-600">
                   <span>Delivery estimate</span>
                   <span className="text-right font-medium text-neutral-900">
-                    {deliveryEstimate ? deliveryEstimate.label : "Enter PIN code"}
+                    {deliveryEstimate ? deliveryEstimate.label : "Enter PIN / postal code"}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3 text-neutral-600">
